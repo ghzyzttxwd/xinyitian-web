@@ -144,3 +144,4 @@ function simulate(player,enemies,maxRounds=20){
 
 export function runChapterBattle(state){const power=chapterEnemyPower(state.player.chapter);return {...simulate(playerTeam(state),makeEnemyTeam(power,'元兵')),enemyPower:power};}
 export function runTowerBattle(state){const floor=state.tower.highest+1,power=towerEnemyPower(floor);return {...simulate(playerTeam(state),makeEnemyTeam(power,'守塔人')),enemyPower:power,floor};}
+export function runAncientTombBattle(state,floor,power){return {...simulate(playerTeam(state),makeEnemyTeam(power,'古墓守卫')),enemyPower:power,floor};}

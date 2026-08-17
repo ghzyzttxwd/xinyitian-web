@@ -2,6 +2,7 @@ import { HEROES, INITIAL_HERO_IDS, SAVE_KEY, SAVE_VERSION, VIP_THRESHOLDS, playe
 import { RED_KUNGFU, DIVINE_KUNGFU, equippedKungfuBonuses } from './kungfu.js';
 import { createInnerPowerHeroState, innerPowerBonuses, INNER_POWER_PER_MINUTE, advanceInnerPower } from './innerpower.js';
 import { createWeaponState, equippedWeaponBonuses } from './weapons.js';
+import { createAncientTombState, ANCIENT_TOMB_DAILY_ATTEMPTS } from './ancienttomb.js';
 
 function newHeroState(id) {
   return {
@@ -52,7 +53,7 @@ export function createInitialState() {
     heroes,
     party: ['player', 'wuji', null, null, null, null],
     tower: { highest: 0 },
-    ancientTomb: { highest: 0, attemptsToday: 1 },
+    ancientTomb: createAncientTombState(),
     kungfu: createKungfuState(),
     innerPower:createInnerPowerState(),
     weapons:createWeaponState(),
@@ -101,7 +102,7 @@ export function normalizeDaily(state) {
   const today = localDateKey();
   if (state.daily.date !== today) {
     state.daily = { date: today, staminaBuys: 0, moneyTreeUses: 0, quickBattles: 0 };
-    if (state.ancientTomb) state.ancientTomb.attemptsToday = 1;
+    if (state.ancientTomb) state.ancientTomb.attemptsToday = ANCIENT_TOMB_DAILY_ATTEMPTS;
   }
 }
 

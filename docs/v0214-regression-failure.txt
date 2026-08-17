@@ -1,2 +1,0 @@
-V0.21.4 regression exit=1
-::error file=src/app.js,line=1::Error: could not observe two Huangshan rounds; 黄衫女首回合免疫异常状态。%0A—— 第1回合 ——%0A黄衫女普通攻击，造成 1,016 伤害。%0A元兵6普通攻击，造成 121,904 伤害。 有敌人倒下！%0A    at A (/tmp/xyt-pw/test.cjs:2:29)%0A    at /tmp/xyt-pw/test.cjs:65:3

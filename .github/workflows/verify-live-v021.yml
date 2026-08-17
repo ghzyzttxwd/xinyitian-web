@@ -1,0 +1,73 @@
+name: Verify Live V0.21
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-live-v021.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify public V0.21 output
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://ghzyzttxwd.github.io/xinyitian-web'
+          ok=0
+          for i in {1..18}; do
+            q="$GITHUB_RUN_ID-$i"
+            if curl -fsSL --connect-timeout 10 --max-time 30 "$base/index.html?v=$q" -o /tmp/index.html && \
+               curl -fsSL --connect-timeout 10 --max-time 30 "$base/src/app.js?v=$q" -o /tmp/app.js && \
+               curl -fsSL --connect-timeout 10 --max-time 30 "$base/src/state.js?v=$q" -o /tmp/state.js && \
+               curl -fsSL --connect-timeout 10 --max-time 30 "$base/src/meridians.js?v=$q" -o /tmp/meridians.mjs && \
+               curl -fsSL --connect-timeout 10 --max-time 30 "$base/styles.css?v=$q" -o /tmp/styles.css && \
+               curl -fsSL --connect-timeout 10 --max-time 30 "$base/sw.js?v=$q" -o /tmp/sw.js && \
+               curl -fsSL --connect-timeout 10 --max-time 30 "$base/assets/original/icon-gems.png?v=$q" -o /tmp/icon-gems.png && \
+               curl -fsSL --connect-timeout 10 --max-time 30 "$base/assets/original/icon-copper.png?v=$q" -o /tmp/icon-copper.png && \
+               curl -fsSL --connect-timeout 10 --max-time 30 "$base/assets/original/icon-stamina.png?v=$q" -o /tmp/icon-stamina.png && \
+               grep -Fq '单机精简版 · V0.21' /tmp/index.html && \
+               grep -Fq '已开 ${slots}/8槽' /tmp/app.js && \
+               grep -Fq "'已解锁'" /tmp/app.js && \
+               grep -Fq '空槽位' /tmp/app.js && \
+               grep -Fq 'normalizeHeroKungfuStates' /tmp/state.js && \
+               grep -Fq 'V0.21 原版场景与资源图标' /tmp/styles.css && \
+               grep -Fq 'data:image/webp;base64' /tmp/styles.css && \
+               grep -Fq "xinyitian-v0.21.0" /tmp/sw.js && \
+               file /tmp/icon-gems.png | grep -Fq 'PNG image data, 60 x 60' && \
+               file /tmp/icon-copper.png | grep -Fq 'PNG image data, 60 x 60' && \
+               file /tmp/icon-stamina.png | grep -Fq 'PNG image data, 60 x 60'; then
+              ok=1
+              break
+            fi
+            sleep 5
+          done
+          test "$ok" -eq 1
+          node --input-type=module <<'JS'
+          import {kungfuSlotsForTalent} from 'file:///tmp/meridians.mjs';
+          const cases=[[219,0],[220,3],[240,3],[260,3],[279,3],[280,4],[340,5],[400,6],[460,7],[520,8]];
+          for(const [talent,want] of cases){
+            const got=kungfuSlotsForTalent(talent);
+            if(got!==want) throw new Error(`live threshold ${talent}: got ${got}, want ${want}`);
+          }
+          JS
+
+      - name: Remove verifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/verify-live-v021.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'chore: remove V0.21 live verifier'
+          git push origin main

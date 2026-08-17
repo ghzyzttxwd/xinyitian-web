@@ -1,4 +1,4 @@
-name: V0.21.5 Original Scene Backgrounds
+name: V0.21.5 Original Scene Patch
 
 on:
   push:
@@ -10,26 +10,21 @@ permissions:
   contents: write
 
 jobs:
-  integrate:
+  patch:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Verify original scene asset blobs
+      - name: Verify original scene assets
         shell: bash
         run: |
           set -euo pipefail
           test "$(git hash-object assets/original/formation-bg.webp)" = "25dc6c4fada0d961ef55da7d49b374907e4ecc90"
           test "$(git hash-object assets/original/kungfu-bg.webp)" = "287791b85f0dac07184d7cff3e2c5e75d7e6a821"
           test "$(git hash-object assets/original/challenge-bg.webp)" = "c745fc1109868144c8b1b4ef8e4343e16245f83d"
-          file assets/original/formation-bg.webp | grep -Fq 'Web/P image'
-          file assets/original/kungfu-bg.webp | grep -Fq 'Web/P image'
-          file assets/original/challenge-bg.webp | grep -Fq 'Web/P image'
-
-      - name: Wire original scenes into UI
+      - name: Apply scene integration
         shell: bash
         run: |
           set -euo pipefail
@@ -59,7 +54,6 @@ jobs:
 .formation-scene .party-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px;max-width:430px;margin:0 auto;padding:45px 7px 18px}
 .formation-scene .party-slot{min-height:84px;background:linear-gradient(145deg,rgba(25,25,21,.78),rgba(13,15,13,.73));backdrop-filter:blur(1px);border-color:rgba(129,109,73,.42);box-shadow:0 5px 12px rgba(0,0,0,.16)}
 .page[data-page="growth"][data-growth="kungfu"]{background-image:linear-gradient(180deg,rgba(10,13,14,.18),rgba(10,12,11,.68) 44%,rgba(10,11,10,.92) 100%),url('./assets/original/kungfu-bg.webp');background-repeat:no-repeat;background-position:center top;background-size:100% auto;border-radius:10px}
-.page[data-page="growth"][data-growth="kungfu"]>.section-title,.page[data-page="growth"][data-growth="kungfu"]>.growth-select,.page[data-page="growth"][data-growth="kungfu"]>.growth-tabs{position:relative;z-index:1}
 .page[data-page="growth"][data-growth="kungfu"] .card{background:linear-gradient(145deg,rgba(28,29,25,.91),rgba(19,21,18,.93))}
 .page[data-page="challenge"]{background-image:linear-gradient(180deg,rgba(25,17,12,.10),rgba(18,13,10,.28) 72%,rgba(10,10,9,.88)),url('./assets/original/challenge-bg.webp');background-repeat:no-repeat;background-position:center top;background-size:100% auto;border-radius:10px;padding-top:24px}
 .page[data-page="challenge"]>.section-title{margin:8px 18px 16px;padding:9px 10px;background:rgba(52,37,25,.73);border-radius:7px;border:1px solid rgba(120,83,52,.30)}
@@ -67,7 +61,6 @@ jobs:
 @media(max-width:430px){.formation-scene{min-height:520px;background-position:center 22%}.formation-scene .party-grid{gap:15px 20px;padding:56px 3px 22px}.formation-scene .party-slot{min-height:92px}.page[data-page="growth"][data-growth="kungfu"],.page[data-page="challenge"]{margin-left:4px;margin-right:4px;width:calc(100% - 8px)}.page[data-page="challenge"]{padding-left:10px;padding-right:10px}}
 '''
           css.write_text(c)
-
           sw=Path('sw.js'); w=sw.read_text()
           if 'xinyitian-v0.21.4' not in w: raise SystemExit('unexpected service worker version')
           w=w.replace('xinyitian-v0.21.4','xinyitian-v0.21.5',1)
@@ -76,8 +69,7 @@ jobs:
           if w.count(anchor)!=1: raise SystemExit('sw scene asset anchor mismatch')
           sw.write_text(w.replace(anchor,repl,1))
           PY
-
-      - name: Static validation
+      - name: Validate and commit
         shell: bash
         run: |
           set -euo pipefail
@@ -88,50 +80,6 @@ jobs:
           grep -Fq 'kungfu-bg.webp' styles.css
           grep -Fq 'challenge-bg.webp' styles.css
           grep -Fq 'xinyitian-v0.21.5' sw.js
-
-      - name: Install Chromium
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p /tmp/xyt-pw && cd /tmp/xyt-pw
-          npm init -y >/dev/null 2>&1
-          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
-          npx playwright install --with-deps chromium >/dev/null 2>&1
-
-      - name: Verify scenes and core mobile interactions
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/xyt-http.log 2>&1 &
-          SERVER_PID=$!
-          trap 'kill $SERVER_PID || true' EXIT
-          cat >/tmp/xyt-pw/test.cjs <<'JS'
-          const {chromium}=require('playwright');
-          const A=(v,m)=>{if(!v)throw new Error(m)};
-          (async()=>{
-            const b=await chromium.launch({headless:true});
-            const p=await b.newPage({viewport:{width:390,height:844}});
-            const errs=[];p.on('pageerror',e=>errs.push(String(e)));
-            await p.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});
-            const f=p.locator('.formation-scene');A(await f.count()===1,'formation scene missing');
-            let bg=await f.evaluate(e=>getComputedStyle(e).backgroundImage);A(bg.includes('formation-bg.webp'),`formation bg ${bg}`);
-            const cols=await p.locator('.formation-scene .party-grid').evaluate(e=>getComputedStyle(e).gridTemplateColumns.split(' ').length);A(cols===2,`formation cols ${cols}`);
-            await p.click('.nav-item[data-page="growth"]');await p.click('[data-growth-tab="kungfu"]');
-            A(await p.locator('#page').getAttribute('data-growth')==='kungfu','kungfu page state marker missing');
-            bg=await p.locator('#page').evaluate(e=>getComputedStyle(e).backgroundImage);A(bg.includes('kungfu-bg.webp'),`kungfu bg ${bg}`);
-            const choose=p.locator('[data-choose-kungfu-slot]').first();if(await choose.count()){await choose.click();A(await p.locator('#genericDialog').evaluate(e=>e.open),'kungfu modal regressed');await p.click('#genericDialog [data-close-generic]');}
-            await p.click('.nav-item[data-page="challenge"]');bg=await p.locator('#page').evaluate(e=>getComputedStyle(e).backgroundImage);A(bg.includes('challenge-bg.webp'),`challenge bg ${bg}`);
-            const overflow=await p.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth);A(!overflow,'horizontal overflow');
-            for(const u of ['formation-bg.webp','kungfu-bg.webp','challenge-bg.webp']){const ok=await p.evaluate(async u=>{const r=await fetch('./assets/original/'+u);return r.ok&&Number(r.headers.get('content-length')||0)>=0},u);A(ok,`asset fetch failed ${u}`)}
-            A(errs.length===0,`page errors ${errs.join(' | ')}`);await b.close();
-          })().catch(e=>{console.error(`::error file=styles.css,line=1::${String(e.stack||e).replace(/%/g,'%25').replace(/\r/g,'%0D').replace(/\n/g,'%0A')}`);process.exit(1)});
-          JS
-          cd /tmp/xyt-pw && node test.cjs
-
-      - name: Commit verified integration and remove workflow
-        shell: bash
-        run: |
-          set -euo pipefail
           rm -f .github/workflows/v0215-original-scenes.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'

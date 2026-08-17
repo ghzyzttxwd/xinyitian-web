@@ -1,0 +1,9 @@
+{
+  "name": "新倚天屠龙记·单机精简版",
+  "short_name": "新倚天",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#11100f",
+  "theme_color": "#15120f",
+  "description": "单机网页版新倚天核心养成体验"
+}

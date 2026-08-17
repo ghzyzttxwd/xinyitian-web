@@ -7,6 +7,7 @@ import { createAwakeningState, awakeningBaseMultiplier } from './awakening.js';
 import { createWudaoState, wudaoBonuses } from './wudao.js';
 import { createTasksState, createDailyTaskFields, ensureTaskState } from './tasks.js';
 import { calibratedHeroPower } from './power.js';
+import { createVipExtras } from './vip.js';
 
 function newHeroState(id) {
   return {
@@ -53,7 +54,7 @@ export function createInitialState() {
       vip: 0, vipExp: 0, totalRecharge: 0,
       legendTokens: 0, heroTokens: 20,
       meridianPills: 0, breakthroughPills: 0,
-      kungfuTickets: 0,
+      kungfuTickets: 0, heroExp: 0,
     },
     heroes,
     party: ['player', 'wuji', null, null, null, null],
@@ -64,6 +65,7 @@ export function createInitialState() {
     weapons:createWeaponState(),
     awakening:createAwakeningState(),
     wudao:createWudaoState(),
+    vipExtras:createVipExtras(),
     tasks:createTasksState(),
     recharge: { firstDoubleUsed: {}, first6Claimed: false, vipGiftBought: {} },
     daily: { date: localDateKey(), staminaBuys: 0, moneyTreeUses: 0, quickBattles: 0, wudaoShopBuys: 0, ...createDailyTaskFields() },

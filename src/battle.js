@@ -3,6 +3,7 @@ import { heroStats } from './state.js';
 import { RED_KUNGFU, DIVINE_KUNGFU, effectAtLevel } from './kungfu.js';
 import { weaponBattleEffects } from './weapons.js';
 import { effectiveHeroProfile, awakeningBattleEffects } from './awakening.js';
+import { applyWudaoProfile, wudaoBattleEffects } from './wudao.js';
 
 function effectsForHero(state, heroId) {
   const h=state.heroes?.[heroId], out=[];
@@ -20,6 +21,7 @@ function effectsForHero(state, heroId) {
   }
   out.push(...weaponBattleEffects(state,heroId));
   out.push(...awakeningBattleEffects(state,heroId));
+  out.push(...wudaoBattleEffects(state,heroId));
   return out;
 }
 
@@ -32,7 +34,7 @@ function cloneFighter(base) {
 
 function playerTeam(state) {
   const team=state.party.filter(Boolean).map(id=>{
-    const tpl=effectiveHeroProfile(state,id,HEROES[id]), s=heroStats(state,id), effects=effectsForHero(state,id);
+    const tpl=applyWudaoProfile(state,id,effectiveHeroProfile(state,id,HEROES[id])), s=heroStats(state,id), effects=effectsForHero(state,id);
     const rageEffect=effects.find(x=>x.kind==='rageBurst'),dodgeStart=effects.find(x=>x.kind==='dodgeStart');
     return cloneFighter({ id,name:tpl.name,side:'player',...s,dodge:Number(s.dodge||0)+Number(dodgeStart?.value||0),skill:tpl.skill,effects,initialRage:Number(s.initialRage||0)+Number(rageEffect?.initialRage||0) });
   });
@@ -78,6 +80,12 @@ function tryRevive(target,log){
   log.push(`${target.name}触发【混元一气功】，复活并恢复${Math.round(e.healRatio*100)}%气血！`); return true;
 }
 
+function tryTeamRevive(target,team,log){
+  if(target.alive)return false;
+  for(const source of living(team)){const e=effectOf(source,'teamReviveOnce');if(e&&!source.teamReviveUsed){source.teamReviveUsed=1;target.alive=true;target.hpNow=Math.max(1,Math.round(target.hp*e.ratio));log.push(`${source.name}悟道触发复起，${target.name}恢复${Math.round(e.ratio*100)}%气血！`);return true;}}
+  return false;
+}
+
 function applyDamage(target,amount,log){
   let left=amount;
   if(target.shield>0){const absorbed=Math.min(target.shield,left);target.shield-=absorbed;left-=absorbed;}
@@ -114,11 +122,11 @@ function performOne(actor,own,enemies,log,forceSkill=false){
   }else actor.rage=Math.min(8,actor.rage+2);
   let killed=false,total=0,misses=0,crits=0;
   const pierce=effectOf(actor,'ignoreDef');
-  for(const target of targets){const hit=damage(actor,target,skillMultiplier,(action.ignoreDef||0)+Number(pierce?.value||0));if(hit.miss){misses++;continue;}const wasAlive=target.alive;applyDamage(target,hit.amount,log);total+=hit.amount;if(hit.crit)crits++;const execute=effectOf(actor,'execute');if(target.alive&&execute&&target.hpNow/target.hp<=execute.threshold&&Math.random()<execute.chance){log.push(`${actor.name}的【屠龙刀】触发斩杀！`);applyDamage(target,target.hpNow,log);}const reflect=effectOf(target,'reflect');if(reflect&&actor.alive){const back=Math.round(hit.amount*reflect.ratio);if(back>0){applyDamage(actor,back,log);log.push(`${target.name}的【金丝软猬甲】反震 ${back.toLocaleString()} 伤害。`);}}const healHit=effectOf(target,'healOnHit');if(healHit&&Math.random()<healHit.chance)healTeam(enemies,target,healHit.ratio,log);const grow=effectOf(target,'afterHitAtk');if(grow&&target.alive){target.godAtkStacks=Number(target.godAtkStacks||0);if(target.godAtkStacks<grow.maxStacks){target.atk=Math.round(target.atk*(1+grow.ratio));target.godAtkStacks+=1;}}if(wasAlive&&!target.alive)killed=true;}
+  for(const target of targets){const hit=damage(actor,target,skillMultiplier,(action.ignoreDef||0)+Number(pierce?.value||0));if(hit.miss){misses++;continue;}const wasAlive=target.alive;applyDamage(target,hit.amount,log);total+=hit.amount;if(hit.crit)crits++;const execute=effectOf(actor,'execute');if(target.alive&&execute&&target.hpNow/target.hp<=execute.threshold&&Math.random()<execute.chance){log.push(`${actor.name}的【屠龙刀】触发斩杀！`);applyDamage(target,target.hpNow,log);}const reflect=effectOf(target,'reflect');if(reflect&&actor.alive){const back=Math.round(hit.amount*reflect.ratio);if(back>0){applyDamage(actor,back,log);log.push(`${target.name}的【金丝软猬甲】反震 ${back.toLocaleString()} 伤害。`);}}if(!target.alive)tryTeamRevive(target,enemies,log);const healHit=effectOf(target,'healOnHit');if(healHit&&Math.random()<healHit.chance)healTeam(enemies,target,healHit.ratio,log);const grow=effectOf(target,'afterHitAtk');if(grow&&target.alive){target.godAtkStacks=Number(target.godAtkStacks||0);if(target.godAtkStacks<grow.maxStacks){target.atk=Math.round(target.atk*(1+grow.ratio));target.godAtkStacks+=1;}}if(wasAlive&&!target.alive)killed=true;}
   log.push(`${actor.name}${useSkill?`施展【${action.name}】`:'普通攻击'}，造成 ${total.toLocaleString()} 伤害${crits?'，触发暴击':''}${misses?`，${misses}次闪避`:''}。${killed?' 有敌人倒下！':''}`);
   if(useSkill&&skill.refundOnKill&&killed)actor.rage+=skill.rageCost||4;
   const steal=effectOf(actor,'lifesteal');if(steal&&total>0&&actor.alive){const heal=Math.round(total*steal.ratio);actor.hpNow=Math.min(actor.hp,actor.hpNow+heal);log.push(`${actor.name}凭【玄铁指环】吸血 ${heal.toLocaleString()}。`);}
-  if(useSkill){teamRage(own,skill.teamRage||0,actor,log);healTeam(own,actor,skill.healTeam||0,log);const drain=effectOf(actor,'skillDrainRage');if(drain){for(const foe of living(enemies))foe.rage=Math.max(0,foe.rage-drain.amount);log.push(`${actor.name}压制敌方怒气 -${drain.amount}。`);}const rageSupport=effectOf(actor,'rageSupport');if(rageSupport&&Math.random()<rageSupport.chance){const allies=living(own).filter(x=>x!==actor);if(allies.length){const ally=allies[Math.floor(Math.random()*allies.length)];ally.rage=Math.min(8,ally.rage+rageSupport.amount);log.push(`${actor.name}的【焦尾琴】令${ally.name}怒气 +${rageSupport.amount}。`);}}if(skill.repeatChance&&living(enemies).length&&Math.random()<skill.repeatChance){performOne(actor,own,enemies,log,true);}}
+  if(useSkill){teamRage(own,skill.teamRage||0,actor,log);healTeam(own,actor,skill.healTeam||0,log);const rageFloor=effectOf(actor,'rageFloorAfterSkill');if(rageFloor){for(const ally of living(own))ally.rage=Math.max(ally.rage,rageFloor.value);log.push(`${actor.name}悟道令己方低怒侠客补至${rageFloor.value}怒。`);}const drain=effectOf(actor,'skillDrainRage');if(drain){for(const foe of living(enemies))foe.rage=Math.max(0,foe.rage-drain.amount);log.push(`${actor.name}压制敌方怒气 -${drain.amount}。`);}const rageSupport=effectOf(actor,'rageSupport');if(rageSupport&&Math.random()<rageSupport.chance){const allies=living(own).filter(x=>x!==actor);if(allies.length){const ally=allies[Math.floor(Math.random()*allies.length)];ally.rage=Math.min(8,ally.rage+rageSupport.amount);log.push(`${actor.name}的【焦尾琴】令${ally.name}怒气 +${rageSupport.amount}。`);}}if(skill.repeatChance&&living(enemies).length&&Math.random()<skill.repeatChance){performOne(actor,own,enemies,log,true);}}
   shieldAfterAction(actor,own,log);
   return {usedSkill:useSkill,killed};
 }

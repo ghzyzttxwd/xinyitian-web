@@ -4,6 +4,7 @@ import { createInnerPowerHeroState, innerPowerBonuses, INNER_POWER_PER_MINUTE, a
 import { createWeaponState, equippedWeaponBonuses } from './weapons.js';
 import { createAncientTombState, ANCIENT_TOMB_DAILY_ATTEMPTS } from './ancienttomb.js';
 import { createAwakeningState, awakeningBaseMultiplier } from './awakening.js';
+import { createWudaoState, wudaoBonuses } from './wudao.js';
 
 function newHeroState(id) {
   return {
@@ -16,6 +17,7 @@ function newHeroState(id) {
     kungfu: { equipped: [null,null,null,null,null,null,null,null] },
     innerPower: createInnerPowerHeroState(),
     weapons: {weapon:null,armor:null,accessory:null,treasure:null},
+    wudao: {stage:0},
   };
 }
 
@@ -59,8 +61,9 @@ export function createInitialState() {
     innerPower:createInnerPowerState(),
     weapons:createWeaponState(),
     awakening:createAwakeningState(),
+    wudao:createWudaoState(),
     recharge: { firstDoubleUsed: {}, first6Claimed: false, vipGiftBought: {} },
-    daily: { date: localDateKey(), staminaBuys: 0, moneyTreeUses: 0, quickBattles: 0 },
+    daily: { date: localDateKey(), staminaBuys: 0, moneyTreeUses: 0, quickBattles: 0, wudaoShopBuys: 0 },
     specials: {
       '纸皮面具': 0, '桃树': 0, '玉蜂': 0, '襄阳令': 0, '大鸡腿': 0,
       '桃花令': 0, '打狗令': 0,
@@ -103,7 +106,7 @@ export function saveState(state) { state.updatedAt = Date.now(); localStorage.se
 export function normalizeDaily(state) {
   const today = localDateKey();
   if (state.daily.date !== today) {
-    state.daily = { date: today, staminaBuys: 0, moneyTreeUses: 0, quickBattles: 0 };
+    state.daily = { date: today, staminaBuys: 0, moneyTreeUses: 0, quickBattles: 0, wudaoShopBuys: 0 };
     if (state.ancientTomb) state.ancientTomb.attemptsToday = ANCIENT_TOMB_DAILY_ATTEMPTS;
   }
 }
@@ -165,18 +168,18 @@ export function heroStats(state, heroId) {
   const tpl = HEROES[heroId], h = state.heroes[heroId];
   if (!tpl || !h) return null;
   const growth = 1 + (Math.max(1, h.level) - 1) * 0.085;
-  const meridian = h.meridian || {}, k = heroKungfuBonuses(state, heroId), w=equippedWeaponBonuses(state,heroId), a=awakeningBaseMultiplier(state,heroId);
+  const meridian = h.meridian || {}, k = heroKungfuBonuses(state, heroId), w=equippedWeaponBonuses(state,heroId), a=awakeningBaseMultiplier(state,heroId), wd=wudaoBonuses(state,heroId);
   const ip = innerPowerBonuses(heroId,h.innerPower?.year||0,meridian.talent||0);
   const rawAtk=tpl.base.atk*a.atk*growth+Number(meridian.atk||0)+k.atk+ip.flatAtk+w.atk;
   const rawDef=tpl.base.def*a.def*growth+Number(meridian.def||0)+k.def+ip.flatDef+w.def;
   const rawHp=tpl.base.hp*a.hp*growth+Number(meridian.hp||0)+k.hp+ip.flatHp+w.hp;
   return {
-    atk: Math.round(rawAtk*(1+ip.atkPct/100)),
-    def: Math.round(rawDef*(1+ip.defPct/100)),
-    hp: Math.round(rawHp*(1+ip.hpPct/100)),
+    atk: Math.round(rawAtk*(1+ip.atkPct/100)*(1+wd.atkPct/100)),
+    def: Math.round(rawDef*(1+ip.defPct/100)*(1+wd.defPct/100)),
+    hp: Math.round(rawHp*(1+ip.hpPct/100)*(1+wd.hpPct/100)),
     speed: tpl.base.speed + Number(a.speed||0) + Math.floor((h.level - 1) / 10),
-    hit: k.hit+ip.hit, dodge: k.dodge+ip.dodge, crit: k.crit+ip.crit, antiCrit: k.antiCrit+ip.antiCrit,
-    damageBonus:ip.damageBonus, damageReduction:ip.damageReduction, initialRage:ip.initialRage,
+    hit: k.hit+ip.hit+wd.hit, dodge: k.dodge+ip.dodge+wd.dodge, crit: k.crit+ip.crit+wd.crit, antiCrit: k.antiCrit+ip.antiCrit+wd.antiCrit,
+    damageBonus:ip.damageBonus+wd.damageBonus, damageReduction:ip.damageReduction+wd.damageReduction, initialRage:ip.initialRage,
   };
 }
 

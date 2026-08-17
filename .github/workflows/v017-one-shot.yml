@@ -23,6 +23,17 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Normalize patch literals
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/v017-patch.mjs')
+          s=p.read_text()
+          s=s.replace(r'\`${event}:\${e.label', r'\`\${event}:\${e.label')
+          s=s.replace(r'\`${target.name}', r'\`\${target.name}')
+          p.write_text(s)
+          PY
+
       - name: Check patch script
         run: node --check scripts/v017-patch.mjs
 

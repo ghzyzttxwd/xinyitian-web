@@ -1,0 +1,29 @@
+name: Apply V0.12
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-v012.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 应用V0.12资源闭环补丁
+        run: python tools/v012_patch.py
+      - name: 检查脚本语法
+        run: |
+          node --check src/app.js
+          node --check src/state.js
+          node --check src/vip.js
+          node --check src/data.js
+          node --check src/battle.js
+          node --check src/tasks.js
+      - name: 提交V0.12
+        run: |
+          git config user.name "ghzyzttxwd"
+          git config user.email "2697941746@qq.com"
+          git add src index.html sw.js
+          git commit -m "V0.12 补齐VIP礼包、奇侠资源与侠客经验闭环"
+          git push

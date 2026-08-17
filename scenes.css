@@ -1,0 +1,89 @@
+/* V0.21.5：原版场景背景第二批。
+   三张场景图来自原APK；这里只做网页端移动裁切、遮罩和卡片可读性适配。 */
+
+/* 首页阵容：原版布阵水墨场景，六人改为2列×3排，贴近原图站位。 */
+#page[data-page="home"] .card:has(.party-grid){
+  min-height:420px;
+  padding-top:14px;
+  background-image:
+    linear-gradient(180deg,rgba(16,18,16,.08),rgba(15,16,14,.38) 72%,rgba(12,13,11,.82)),
+    url('./assets/original/formation-bg.webp');
+  background-size:cover;
+  background-position:center 31%;
+  border-color:rgba(166,139,86,.38);
+}
+#page[data-page="home"] .card:has(.party-grid) .section-title{
+  background:rgba(18,18,15,.58);
+  margin:-4px -4px 13px;
+  padding:9px 9px 8px;
+  border-radius:6px;
+}
+#page[data-page="home"] .card:has(.party-grid) .party-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px 18px;
+  max-width:430px;
+  margin:0 auto;
+  padding:45px 7px 18px;
+}
+#page[data-page="home"] .card:has(.party-grid) .party-slot{
+  min-height:84px;
+  background:linear-gradient(145deg,rgba(25,25,21,.78),rgba(13,15,13,.73));
+  border-color:rgba(129,109,73,.42);
+  box-shadow:0 5px 12px rgba(0,0,0,.16);
+}
+
+/* 功法：原版云山功法场景。用 :has() 锁定当前确实渲染功法面板时才出现。 */
+#page[data-page="growth"]:has(.kungfu-main-card){
+  background-image:
+    linear-gradient(180deg,rgba(10,13,14,.14),rgba(10,12,11,.64) 44%,rgba(10,11,10,.92) 100%),
+    url('./assets/original/kungfu-bg.webp');
+  background-repeat:no-repeat;
+  background-position:center top;
+  background-size:100% auto;
+  border-radius:10px;
+}
+#page[data-page="growth"]:has(.kungfu-main-card) .card{
+  background:linear-gradient(145deg,rgba(28,29,25,.91),rgba(19,21,18,.93));
+}
+
+/* 挑战：原版挑战羊皮卷场景。 */
+#page[data-page="challenge"]{
+  background-image:
+    linear-gradient(180deg,rgba(25,17,12,.08),rgba(18,13,10,.26) 72%,rgba(10,10,9,.88)),
+    url('./assets/original/challenge-bg.webp');
+  background-repeat:no-repeat;
+  background-position:center top;
+  background-size:100% auto;
+  border-radius:10px;
+  padding-top:24px;
+}
+#page[data-page="challenge"]>.section-title{
+  margin:8px 18px 16px;
+  padding:9px 10px;
+  background:rgba(52,37,25,.73);
+  border-radius:7px;
+  border:1px solid rgba(120,83,52,.30);
+}
+#page[data-page="challenge"] .card{
+  background:linear-gradient(145deg,rgba(42,33,25,.88),rgba(24,23,19,.91));
+  border-color:rgba(123,91,58,.33);
+}
+
+@media(max-width:430px){
+  #page[data-page="home"] .card:has(.party-grid){
+    min-height:520px;
+    background-position:center 22%;
+  }
+  #page[data-page="home"] .card:has(.party-grid) .party-grid{
+    gap:15px 20px;
+    padding:56px 3px 22px;
+  }
+  #page[data-page="home"] .card:has(.party-grid) .party-slot{min-height:92px}
+  #page[data-page="growth"]:has(.kungfu-main-card),
+  #page[data-page="challenge"]{
+    margin-left:4px;
+    margin-right:4px;
+    width:calc(100% - 8px);
+  }
+  #page[data-page="challenge"]{padding-left:10px;padding-right:10px}
+}

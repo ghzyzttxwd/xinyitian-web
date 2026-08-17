@@ -3,11 +3,12 @@ import { RED_KUNGFU, DIVINE_KUNGFU, equippedKungfuBonuses } from './kungfu.js';
 import { createInnerPowerHeroState, innerPowerBonuses, INNER_POWER_PER_MINUTE, advanceInnerPower } from './innerpower.js';
 import { createWeaponState, equippedWeaponBonuses } from './weapons.js';
 import { createAncientTombState, ANCIENT_TOMB_DAILY_ATTEMPTS } from './ancienttomb.js';
-import { createAwakeningState, awakeningBaseMultiplier } from './awakening.js';
+import { createAwakeningState, awakeningBaseMultiplier, effectiveHeroProfile } from './awakening.js';
 import { createWudaoState, wudaoBonuses } from './wudao.js';
 import { createTasksState, createDailyTaskFields, ensureTaskState } from './tasks.js';
 import { calibratedHeroPower } from './power.js';
 import { createVipExtras } from './vip.js';
+import { baseTalentForRarity } from './meridians.js';
 import { storyHeroProfile } from './story.js';
 
 function newHeroState(id) {
@@ -171,12 +172,19 @@ export function heroKungfuBonuses(state, heroId) {
   return equippedKungfuBonuses({ equipped: h.kungfu?.equipped || [], levels: globalKungfuLevels(state) });
 }
 
+export function heroTalent(state, heroId) {
+  const base=HEROES[heroId],h=state.heroes?.[heroId];
+  if(!base||!h)return 0;
+  const tpl=storyHeroProfile(state,heroId,effectiveHeroProfile(state,heroId,base));
+  return baseTalentForRarity(tpl?.rarity||base.rarity)+Number(h.meridian?.talent||0);
+}
+
 export function heroStats(state, heroId) {
   const tpl = storyHeroProfile(state,heroId,HEROES[heroId]), h = state.heroes[heroId];
   if (!tpl || !h) return null;
   const growth = 1 + (Math.max(1, h.level) - 1) * 0.085;
   const meridian = h.meridian || {}, k = heroKungfuBonuses(state, heroId), w=equippedWeaponBonuses(state,heroId), a=awakeningBaseMultiplier(state,heroId), wd=wudaoBonuses(state,heroId);
-  const ip = innerPowerBonuses(heroId,h.innerPower,meridian.talent||0);
+  const ip = innerPowerBonuses(heroId,h.innerPower,heroTalent(state,heroId));
   const rawAtk=tpl.base.atk*a.atk*growth+Number(meridian.atk||0)+k.atk+ip.flatAtk+w.atk;
   const rawDef=tpl.base.def*a.def*growth+Number(meridian.def||0)+k.def+ip.flatDef+w.def;
   const rawHp=tpl.base.hp*a.hp*growth+Number(meridian.hp||0)+k.hp+ip.flatHp+w.hp;

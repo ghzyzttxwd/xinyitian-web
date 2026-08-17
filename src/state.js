@@ -1,6 +1,7 @@
 import { HEROES, INITIAL_HERO_IDS, SAVE_KEY, SAVE_VERSION, VIP_THRESHOLDS, playerExpToNext } from './data.js';
 import { RED_KUNGFU, DIVINE_KUNGFU, equippedKungfuBonuses } from './kungfu.js';
 import { createInnerPowerHeroState, innerPowerBonuses, INNER_POWER_PER_MINUTE, advanceInnerPower } from './innerpower.js';
+import { createWeaponState, equippedWeaponBonuses } from './weapons.js';
 
 function newHeroState(id) {
   return {
@@ -12,6 +13,7 @@ function newHeroState(id) {
     meridian: { progress: 0, atk: 0, def: 0, hp: 0, talent: 0 },
     kungfu: { equipped: [null,null,null,null,null,null,null,null] },
     innerPower: createInnerPowerHeroState(),
+    weapons: {weapon:null,armor:null,accessory:null,treasure:null},
   };
 }
 
@@ -53,6 +55,7 @@ export function createInitialState() {
     ancientTomb: { highest: 0, attemptsToday: 1 },
     kungfu: createKungfuState(),
     innerPower:createInnerPowerState(),
+    weapons:createWeaponState(),
     recharge: { firstDoubleUsed: {}, first6Claimed: false, vipGiftBought: {} },
     daily: { date: localDateKey(), staminaBuys: 0, moneyTreeUses: 0, quickBattles: 0 },
     specials: {
@@ -159,11 +162,11 @@ export function heroStats(state, heroId) {
   const tpl = HEROES[heroId], h = state.heroes[heroId];
   if (!tpl || !h) return null;
   const growth = 1 + (Math.max(1, h.level) - 1) * 0.085;
-  const meridian = h.meridian || {}, k = heroKungfuBonuses(state, heroId);
+  const meridian = h.meridian || {}, k = heroKungfuBonuses(state, heroId), w=equippedWeaponBonuses(state,heroId);
   const ip = innerPowerBonuses(heroId,h.innerPower?.year||0,meridian.talent||0);
-  const rawAtk=tpl.base.atk*growth+Number(meridian.atk||0)+k.atk+ip.flatAtk;
-  const rawDef=tpl.base.def*growth+Number(meridian.def||0)+k.def+ip.flatDef;
-  const rawHp=tpl.base.hp*growth+Number(meridian.hp||0)+k.hp+ip.flatHp;
+  const rawAtk=tpl.base.atk*growth+Number(meridian.atk||0)+k.atk+ip.flatAtk+w.atk;
+  const rawDef=tpl.base.def*growth+Number(meridian.def||0)+k.def+ip.flatDef+w.def;
+  const rawHp=tpl.base.hp*growth+Number(meridian.hp||0)+k.hp+ip.flatHp+w.hp;
   return {
     atk: Math.round(rawAtk*(1+ip.atkPct/100)),
     def: Math.round(rawDef*(1+ip.defPct/100)),
@@ -176,8 +179,8 @@ export function heroStats(state, heroId) {
 
 export function heroPower(state, heroId) {
   const s = heroStats(state, heroId); if (!s) return 0;
-  const k = heroKungfuBonuses(state, heroId);
-  return Math.round(s.atk*4.6 + s.def*3.5 + s.hp*.7 + s.speed*6 + (s.hit+s.dodge+s.crit+s.antiCrit+s.damageBonus+s.damageReduction)*1200 + k.power);
+  const k = heroKungfuBonuses(state, heroId), w=equippedWeaponBonuses(state,heroId);
+  return Math.round(s.atk*4.6 + s.def*3.5 + s.hp*.7 + s.speed*6 + (s.hit+s.dodge+s.crit+s.antiCrit+s.damageBonus+s.damageReduction)*1200 + k.power + w.power);
 }
 
 export function totalPower(state) { return state.party.filter(Boolean).reduce((sum,id)=>sum+heroPower(state,id),0); }

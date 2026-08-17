@@ -79,9 +79,9 @@ jobs:
           SERVER_PID=$!
           trap 'kill $SERVER_PID || true' EXIT
           mkdir -p /tmp/pw && cd /tmp/pw
-          npm init -y >/dev/null 2>&1
-          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
-          npx playwright install chromium >/dev/null 2>&1
+          npm init -y
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
           cat > test.cjs <<'JS'
           const { chromium } = require('playwright');
           const assert=(v,m)=>{if(!v)throw new Error(m)};
@@ -100,7 +100,7 @@ jobs:
             assert(!resource.overflow,'resource bar horizontally overflows');
 
             const redId=await page.evaluate(async()=>{
-              const m=await import('./src/state.js');
+              const m=await import('/src/state.js');
               const s=m.createInitialState();
               const redId=Object.keys(s.kungfu.red)[0];
               s.heroes.huangshan.owned=true;

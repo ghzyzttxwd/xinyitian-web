@@ -1,0 +1,200 @@
+name: V0.21.4 Kungfu Modal and Rage
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/v0214-kungfu-modal-rage.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch kungfu modal and base rage
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          app=Path('src/app.js')
+          s=app.read_text()
+
+          old="const battleDialog=document.querySelector('#battleDialog'), battleDialogBody=document.querySelector('#battleDialogBody');\nconst importInput=document.querySelector('#importSaveInput'), saveStatus=document.querySelector('#saveStatus');"
+          new="const battleDialog=document.querySelector('#battleDialog'), battleDialogBody=document.querySelector('#battleDialogBody');\nconst genericDialog=document.querySelector('#genericDialog'), genericDialogBody=document.querySelector('#genericDialogBody');\nconst importInput=document.querySelector('#importSaveInput'), saveStatus=document.querySelector('#saveStatus');"
+          if s.count(old)!=1: raise SystemExit('generic dialog binding anchor mismatch')
+          s=s.replace(old,new,1)
+
+          anchor="function kungfuNameFromRef(ref){if(!ref)return '空';if(String(ref).startsWith('god:'))return DIVINE_KUNGFU[String(ref).slice(4)]?.name||'神功';return RED_KUNGFU[ref]?.name||'功法';}\n"
+          helper=r'''function kungfuNameFromRef(ref){if(!ref)return '空';if(String(ref).startsWith('god:'))return DIVINE_KUNGFU[String(ref).slice(4)]?.name||'神功';return RED_KUNGFU[ref]?.name||'功法';}
+function kungfuLevelText(ref){if(String(ref||'').startsWith('god:'))return '神级';const rec=redKungfuRecord(ref);return rec.level>0?`Lv.${rec.level}`:'';}
+function closeKungfuDialog(){if(genericDialog.open)genericDialog.close();genericDialog.classList.remove('kungfu-dialog');genericDialogBody.innerHTML='';}
+function showKungfuPicker(slotIndex){
+ ensureGrowthHero();const slot=Number(slotIndex),h=state.heroes[selectedGrowthHero],slots=kungfuSlotsForTalent(heroTalent(state,selectedGrowthHero));
+ if(!Number.isInteger(slot)||slot<0||slot>=slots)return alert('该功法槽尚未解锁。');if(h.kungfu?.equipped?.[slot])return showKungfuDetail(h.kungfu.equipped[slot]);
+ const reds=Object.values(RED_KUNGFU).filter(k=>redKungfuRecord(k.id).level>0).map(k=>{const rec=redKungfuRecord(k.id),used=kungfuUsedBy(k.id),disabled=!!used;return `<button class="kungfu-choice-card ${disabled?'disabled':''}" data-pick-kungfu="${k.id}" data-target-slot="${slot}" ${disabled?'disabled':''}><span class="kungfu-choice-name rarity-6">${k.name}</span><span class="kungfu-choice-level">Lv.${rec.level} · 备用${fmt(rec.copies)}本</span><span class="kungfu-choice-effect">${displayEffect(k.id,rec.level)}</span><span class="kungfu-choice-status">${used?`${HEROES[used.heroId]?.name||'侠客'}已装备`:'点击装备'}</span></button>`;}).join('');
+ const gods=Object.values(DIVINE_KUNGFU).filter(k=>Number(state.kungfu?.divine?.[k.id]||0)>0).map(k=>{const ref=`god:${k.id}`,used=kungfuUsedBy(ref),disabled=!!used;return `<button class="kungfu-choice-card divine ${disabled?'disabled':''}" data-pick-kungfu="${ref}" data-target-slot="${slot}" ${disabled?'disabled':''}><span class="kungfu-choice-name rarity-7">${k.name}</span><span class="kungfu-choice-level">神级融合功法</span><span class="kungfu-choice-effect">${k.desc}</span><span class="kungfu-choice-status">${used?`${HEROES[used.heroId]?.name||'侠客'}已装备`:'点击装备'}</span></button>`;}).join('');
+ genericDialogBody.innerHTML=`<div class="modal-inner kungfu-modal-inner"><div class="modal-head"><div><span class="eyebrow">功法装备</span><h3>${HEROES[selectedGrowthHero].name} · 第${slot+1}槽</h3></div><button class="btn btn-ghost" data-close-generic>关闭</button></div><div class="notice kungfu-picker-tip">点哪门功法就直接装进第${slot+1}槽，不再跳转长列表。</div><div class="kungfu-picker-scroll"><div class="kungfu-choice-grid">${reds}${gods}</div>${!reds&&!gods?'<div class="notice">当前还没有可装备功法，可先在藏经阁获取。</div>':''}</div></div>`;
+ genericDialog.classList.add('kungfu-dialog');if(!genericDialog.open)genericDialog.showModal();
+}
+function showKungfuDetail(ref){
+ ensureGrowthHero();if(!ref)return;const god=String(ref).startsWith('god:');let body='';
+ if(god){const id=String(ref).slice(4),k=DIVINE_KUNGFU[id];if(!k)return;body=`<div class="kungfu-detail-name rarity-7">${k.name}</div><div class="kungfu-detail-level">神级融合功法</div><div class="notice">${k.desc}</div><div class="hero-meta" style="margin-top:10px">神级融合功法当前没有等级升级；可在功法槽中直接查看或卸下。</div>`;}
+ else{const k=RED_KUNGFU[ref],rec=redKungfuRecord(ref);if(!k||rec.level<=0)return;const maxed=rec.level>=10,need=maxed?0:KUNGFU_UPGRADE_COPIES[rec.level],can=!maxed&&rec.copies>=need;body=`<div class="kungfu-detail-name rarity-6">${k.name}</div><div class="kungfu-detail-level">Lv.${rec.level}${maxed?' · 已满级':''}</div><div class="notice">当前：${displayEffect(ref,rec.level)}</div>${!maxed?`<div class="notice kungfu-next-effect">下一级：${displayEffect(ref,rec.level+1)}</div><div class="kungfu-upgrade-row"><div><span class="muted">备用本体</span><b>${fmt(rec.copies)} / ${need}</b></div><button class="btn btn-primary" data-modal-upgrade-kungfu="${ref}" ${can?'':'disabled'}>升级到 Lv.${rec.level+1}</button></div>`:'<div class="battle-win" style="margin-top:12px">功法已修炼至10级</div>'}`;}
+ genericDialogBody.innerHTML=`<div class="modal-inner kungfu-modal-inner"><div class="modal-head"><div><span class="eyebrow">功法详情</span><h3>${HEROES[selectedGrowthHero].name}</h3></div><button class="btn btn-ghost" data-close-generic>关闭</button></div><div class="kungfu-detail-panel">${body}</div></div>`;
+ genericDialog.classList.add('kungfu-dialog');if(!genericDialog.open)genericDialog.showModal();
+}
+'''
+          if s.count(anchor)!=1: raise SystemExit('kungfu helper anchor mismatch')
+          s=s.replace(anchor,helper,1)
+
+          start=s.index('function kungfuEquipSlotsHtml(){')
+          end=s.index('function redKungfuCards(){',start)
+          slot_func=r'''function kungfuEquipSlotsHtml(){
+ const h=state.heroes[selectedGrowthHero],talent=heroTalent(state,selectedGrowthHero),slots=kungfuSlotsForTalent(talent),eq=h.kungfu?.equipped||[];
+ return `<div class="kungfu-slots">${Array.from({length:8},(_,i)=>{const ref=eq[i],locked=i>=slots;return `<div class="kungfu-slot ${locked?'locked':'open'}"><div class="muted">第${i+1}槽 · ${locked?'未解锁':'已解锁'}</div>${locked?'<div class="hero-name">—</div>':ref?`<button class="kungfu-slot-main" data-open-kungfu="${ref}"><span class="hero-name">${kungfuNameFromRef(ref)}</span><small>${kungfuLevelText(ref)} · 点此查看/升级</small></button>`:'<div class="hero-name">空槽位</div>'}${ref&&!locked?`<button class="btn btn-ghost btn-block" data-unequip-slot="${i}" style="margin-top:6px">卸下</button>`:!locked?`<button class="btn btn-block" data-choose-kungfu-slot="${i}" style="margin-top:6px">选择功法</button>`:''}</div>`;}).join('')}</div>`;
+}
+'''
+          s=s[:start]+slot_func+s[end:]
+
+          old="function equipKungfuRef(ref){ensureGrowthHero();if(kungfuUsedBy(ref))return alert('这门功法已经装备在其他侠客身上。');const slot=firstOpenKungfuSlot(selectedGrowthHero);if(slot<0)return alert('当前没有空闲的已解锁功法槽。');state.heroes[selectedGrowthHero].kungfu.equipped[slot]=ref;commit();}"
+          new="function equipKungfuRef(ref,preferredSlot=null){ensureGrowthHero();if(kungfuUsedBy(ref))return alert('这门功法已经装备在其他侠客身上。');const h=state.heroes[selectedGrowthHero],slots=kungfuSlotsForTalent(heroTalent(state,selectedGrowthHero));let slot=preferredSlot===null?firstOpenKungfuSlot(selectedGrowthHero):Number(preferredSlot);if(!Number.isInteger(slot)||slot<0||slot>=slots)return alert('该功法槽尚未解锁。');if(h.kungfu.equipped[slot])return alert('这个功法槽已经有功法了。');h.kungfu.equipped[slot]=ref;closeKungfuDialog();commit();}"
+          if s.count(old)!=1: raise SystemExit('equipKungfuRef anchor mismatch')
+          s=s.replace(old,new,1)
+
+          old="if(btn.dataset.growthTab){selectedGrowthTab=btn.dataset.growthTab;renderGrowth();return;}if(btn.dataset.levelHero)"
+          new="if(btn.dataset.growthTab){selectedGrowthTab=btn.dataset.growthTab;renderGrowth();return;}if(btn.dataset.chooseKungfuSlot!==undefined){showKungfuPicker(btn.dataset.chooseKungfuSlot);return;}if(btn.dataset.openKungfu){showKungfuDetail(btn.dataset.openKungfu);return;}if(btn.dataset.levelHero)"
+          if s.count(old)!=1: raise SystemExit('page kungfu event anchor mismatch')
+          s=s.replace(old,new,1)
+
+          old="const action=btn.dataset.action;if(action==='chooseKungfu'){document.querySelector('#kungfuLibrary')?.scrollIntoView({behavior:'smooth',block:'start'});return;}if(action==='chapter')"
+          new="const action=btn.dataset.action;if(action==='chapter')"
+          if s.count(old)!=1: raise SystemExit('old chooseKungfu scroll handler mismatch')
+          s=s.replace(old,new,1)
+
+          anchor="battleDialog.addEventListener('click',e=>{if(e.target.closest('[data-close-dialog]'))battleDialog.close();});\n"
+          extra="battleDialog.addEventListener('click',e=>{if(e.target.closest('[data-close-dialog]'))battleDialog.close();});\ngenericDialog.addEventListener('click',e=>{if(e.target===genericDialog){closeKungfuDialog();return;}const btn=e.target.closest('button');if(!btn)return;if(btn.dataset.closeGeneric!==undefined){closeKungfuDialog();return;}if(btn.dataset.pickKungfu){equipKungfuRef(btn.dataset.pickKungfu,btn.dataset.targetSlot);return;}if(btn.dataset.modalUpgradeKungfu){const id=btn.dataset.modalUpgradeKungfu;upgradeKungfu(id);showKungfuDetail(id);return;}});\n"
+          if s.count(anchor)!=1: raise SystemExit('generic dialog event anchor mismatch')
+          s=s.replace(anchor,extra,1)
+          app.write_text(s)
+
+          state=Path('src/state.js'); t=state.read_text()
+          old="damageBonus:ip.damageBonus+wd.damageBonus, damageReduction:ip.damageReduction+wd.damageReduction, initialRage:ip.initialRage, critDamage:ip.critDamage, critDamageReduction:ip.critDamageReduction,"
+          new="damageBonus:ip.damageBonus+wd.damageBonus, damageReduction:ip.damageReduction+wd.damageReduction, initialRage:2+Number(ip.initialRage||0), critDamage:ip.critDamage, critDamageReduction:ip.critDamageReduction,"
+          if t.count(old)!=1: raise SystemExit('state initial rage anchor mismatch')
+          state.write_text(t.replace(old,new,1))
+
+          battle=Path('src/battle.js'); b=battle.read_text()
+          old="  const rage=base.initialRage||0;"
+          new="  const rage=base.initialRage??2;"
+          if b.count(old)!=1: raise SystemExit('battle rage default anchor mismatch')
+          battle.write_text(b.replace(old,new,1))
+
+          css=Path('styles.css'); c=css.read_text()
+          if 'V0.21.4：功法二级页' in c: raise SystemExit('kungfu modal css already exists')
+          c += r'''
+
+/* V0.21.4：功法二级页。手机端约占2/3屏，装备与升级都在弹层内完成。 */
+.kungfu-slot-main{display:grid;width:100%;gap:2px;margin-top:4px;padding:7px 6px;text-align:left;border:1px solid rgba(202,158,83,.26);border-radius:6px;background:rgba(94,61,27,.14);color:inherit;cursor:pointer}
+.kungfu-slot-main .hero-name{color:#e7c275}.kungfu-slot-main small{font-size:9px;color:#9f8d70}
+.kungfu-dialog{width:min(96vw,640px);height:68dvh;max-height:68dvh;overflow:hidden}
+.kungfu-modal-inner{height:100%;display:flex;flex-direction:column;padding:12px}
+.kungfu-dialog .modal-head{flex:0 0 auto;margin-bottom:8px}.kungfu-dialog .modal-head h3{margin-top:2px}
+.kungfu-picker-tip{flex:0 0 auto;margin-bottom:8px}
+.kungfu-picker-scroll{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;padding:1px 2px 6px}
+.kungfu-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.kungfu-choice-card{min-height:112px;display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:10px;text-align:left;border:1px solid rgba(190,145,75,.38);border-radius:8px;background:linear-gradient(145deg,rgba(42,31,22,.98),rgba(21,21,18,.98));color:var(--text);cursor:pointer}
+.kungfu-choice-card.divine{border-color:rgba(229,188,86,.56);background:linear-gradient(145deg,rgba(61,46,22,.98),rgba(28,25,18,.98))}.kungfu-choice-card.disabled{opacity:.42}
+.kungfu-choice-name{font-weight:900;font-size:13px}.kungfu-choice-level,.kungfu-choice-status{font-size:9.5px;color:#bca888}.kungfu-choice-status{margin-top:auto;color:#ddb96f}.kungfu-choice-effect{font-size:9.5px;line-height:1.45;color:#9e9482;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.kungfu-detail-panel{flex:1 1 auto;overflow:auto;padding:4px 1px 8px}.kungfu-detail-name{font-family:"STKaiti","KaiTi",serif;font-size:27px;font-weight:900}.kungfu-detail-level{margin:3px 0 12px;color:#c9ad75;font-weight:800}.kungfu-next-effect{margin-top:8px;border-left-color:#7c9275}.kungfu-upgrade-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding:11px;border:1px solid rgba(194,153,85,.22);border-radius:7px;background:rgba(16,17,14,.62)}.kungfu-upgrade-row b{display:block;margin-top:3px;color:#e4bd70}
+@media(max-width:430px){.kungfu-dialog{width:calc(100vw - 14px);height:68dvh;max-height:68dvh}.kungfu-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.kungfu-choice-card{min-height:108px;padding:9px}.kungfu-upgrade-row{align-items:stretch;flex-direction:column}.kungfu-upgrade-row .btn{width:100%}}
+'''
+          css.write_text(c)
+
+          sw=Path('sw.js'); w=sw.read_text()
+          if 'xinyitian-v0.21.3' not in w: raise SystemExit('unexpected service worker version')
+          sw.write_text(w.replace('xinyitian-v0.21.3','xinyitian-v0.21.4',1))
+          PY
+
+      - name: Static checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in src/*.js sw.js; do node --check "$f"; done
+          grep -Fq 'data-choose-kungfu-slot="${i}"' src/app.js
+          grep -Fq 'data-open-kungfu="${ref}"' src/app.js
+          grep -Fq 'data-pick-kungfu="${k.id}"' src/app.js
+          grep -Fq 'initialRage:2+Number(ip.initialRage||0)' src/state.js
+          grep -Fq 'actor.rage=Math.min(8,actor.rage+2)' src/battle.js
+          grep -Fq 'xinyitian-v0.21.4' sw.js
+
+      - name: Install Chromium runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/xyt-pw && cd /tmp/xyt-pw
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+
+      - name: Verify mobile kungfu UX and rage timing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/xyt-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          cat >/tmp/xyt-pw/test.cjs <<'JS'
+          const {chromium}=require('playwright');
+          const A=(v,m)=>{if(!v)throw new Error(m)};
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:390,height:844}});
+            const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+            const seed={version:1,player:{level:100,chapter:110,copper:5e7,gems:5e4,stamina:100,staminaCap:100,totalRecharge:0,heroExp:5e5,meridianPills:99999,breakthroughPills:9999},heroes:{huangshan:{owned:true,level:100,exp:0,awakened:false,meridian:{progress:0,atk:0,def:0,hp:0,talent:20},kungfu:{equipped:Array(8).fill(null)}}},kungfu:{red:{'104001':{level:1,copies:5},'104201':{level:1,copies:2},'104301':{level:1,copies:2}}}};
+            await page.addInitScript(s=>localStorage.setItem('xinyitian_single_v1',JSON.stringify(s)),seed);
+            await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});
+            await page.click('.nav-item[data-page="growth"]');
+            await page.selectOption('#growthHeroSelect','huangshan');
+            await page.click('[data-growth-tab="kungfu"]');
+            A(await page.locator('[data-choose-kungfu-slot="0"]').count()===1,'slot 1 picker missing');
+            await page.click('[data-choose-kungfu-slot="0"]');
+            const dialog=page.locator('#genericDialog');A(await dialog.evaluate(d=>d.open),'picker dialog did not open');
+            const ratio=await dialog.evaluate(d=>d.getBoundingClientRect().height/window.innerHeight);A(ratio>.60&&ratio<.74,`picker height ratio ${ratio}`);
+            A(await page.locator('#genericDialog [data-pick-kungfu="104001"]').count()===1,'kungfu choice missing');
+            await page.click('#genericDialog [data-pick-kungfu="104001"]');
+            A(!(await dialog.evaluate(d=>d.open)),'picker did not close after equip');
+            A(await page.locator('.kungfu-slot [data-open-kungfu="104001"]').count()===1,'equipped kungfu is not tappable');
+            let saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('xinyitian_single_v1')));A(saved.heroes.huangshan.kungfu.equipped[0]==='104001','selected kungfu not put into target slot');
+            await page.click('.kungfu-slot [data-open-kungfu="104001"]');
+            A(await dialog.evaluate(d=>d.open),'detail dialog did not open');A((await dialog.innerText()).includes('真武七截剑'),'detail dialog wrong kungfu');A((await dialog.innerText()).includes('Lv.1'),'detail did not show level 1');
+            const upgrade=page.locator('#genericDialog [data-modal-upgrade-kungfu="104001"]');A(await upgrade.isEnabled(),'modal upgrade unexpectedly disabled');await upgrade.click();
+            A((await dialog.innerText()).includes('Lv.2'),'modal did not refresh to level 2');
+            saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('xinyitian_single_v1')));A(saved.kungfu.red['104001'].level===2,'upgrade not persisted');
+
+            const rage=await page.evaluate(async()=>{const st=await import('./src/state.js');const bt=await import('./src/battle.js');const s=st.createInitialState();s.player.level=100;s.player.chapter=1;s.heroes.huangshan.owned=true;s.heroes.huangshan.level=100;s.party=['huangshan',null,null,null,null,null];const initial=st.heroStats(s,'huangshan').initialRage;const r=bt.runChapterBattle(s),i1=r.log.indexOf('—— 第1回合 ——'),i2=r.log.indexOf('—— 第2回合 ——'),i3=r.log.indexOf('—— 第3回合 ——');return{initial,round1:r.log.slice(i1+1,i2<0?undefined:i2).join('\n'),round2:r.log.slice(i2+1,i3<0?undefined:i3).join('\n'),log:r.log.join('\n')}});
+            A(rage.initial===2,`base initial rage ${rage.initial}`);A(rage.round1.includes('黄衫女普通攻击'),`round1 should be normal: ${rage.round1}`);A(rage.round2.includes('黄衫女施展【'),`round2 should use skill: ${rage.round2}\nFULL=${rage.log}`);
+            A(errors.length===0,`page errors: ${errors.join(' | ')}`);
+            await browser.close();
+          })().catch(e=>{const msg=String(e.stack||e).replace(/%/g,'%25').replace(/\r/g,'%0D').replace(/\n/g,'%0A');console.error(`::error file=src/app.js,line=1::${msg}`);process.exit(1)});
+          JS
+          cd /tmp/xyt-pw && node test.cjs
+
+      - name: Commit patch and remove workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/v0214-kungfu-modal-rage.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/app.js src/state.js src/battle.js styles.css sw.js .github/workflows/v0214-kungfu-modal-rage.yml
+          git commit -m 'feat: add kungfu subpage and correct base rage'
+          git push origin main

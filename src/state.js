@@ -202,7 +202,7 @@ export function heroStats(state, heroId) {
     hp: Math.round(rawHp*(1+ip.hpPct/100)*(1+wd.hpPct/100)*(1+Number(w.hpPct||0)/100)),
     speed: tpl.base.speed + Number(a.speed||0) + Math.floor((h.level - 1) / 10),
     hit: k.hit+ip.hit+wd.hit+Number(w.hit||0), dodge: k.dodge+ip.dodge+wd.dodge+Number(w.dodge||0), crit: k.crit+ip.crit+wd.crit+Number(w.crit||0), antiCrit: k.antiCrit+ip.antiCrit+wd.antiCrit+Number(w.antiCrit||0),
-    damageBonus:ip.damageBonus+wd.damageBonus, damageReduction:ip.damageReduction+wd.damageReduction, initialRage:ip.initialRage, critDamage:ip.critDamage, critDamageReduction:ip.critDamageReduction,
+    damageBonus:ip.damageBonus+wd.damageBonus, damageReduction:ip.damageReduction+wd.damageReduction, initialRage:2+Number(ip.initialRage||0), critDamage:ip.critDamage, critDamageReduction:ip.critDamageReduction,
   };
 }
 

@@ -39,7 +39,7 @@ function circleActive(team){return THREE_DU.every(id=>living(team).some(x=>x.id=
 function controlCount(f){return CONTROL_TYPES.reduce((n,k)=>n+(Number(f.statuses?.[k]||0)>0?1:0),0);}
 
 function cloneFighter(base) {
-  const rage=base.initialRage||0;
+  const rage=base.initialRage??2;
   return { ...base, hpNow:base.hp, rage, alive:true, shield:0, reviveUsed:0,
     statuses:{stun:0,silence:0,seal:0}, buddha:0, vajraGuard:0, controlDamageBonus:0,
     rageTransferUsed:0, guardStacks:0, hitsTaken:0, damageImmuneCharges:0, damageImmuneThroughRound:0,

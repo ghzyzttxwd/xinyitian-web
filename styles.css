@@ -163,3 +163,19 @@ button,input,select{font:inherit}button{color:inherit}
 .original-figure-card[data-hero-id="zhangsanfeng"]::after{background-image:url('./assets/original/figure-zhangsanfeng.webp')}
 .original-figure-card>.hero-card-row,.original-figure-card>.hero-name,.original-figure-card>.hero-meta{position:relative;z-index:1}
 @media(max-width:430px){.hero-card.original-figure-card::after{right:5px;top:6px;bottom:auto;width:68px;height:78px;opacity:.28}.party-slot.original-figure-card::after{right:0;bottom:0;top:auto;width:54px;height:70%;opacity:.32}}
+
+
+/* V0.21.4：功法二级页。手机端约占2/3屏，装备与升级都在弹层内完成。 */
+.kungfu-slot-main{display:grid;width:100%;gap:2px;margin-top:4px;padding:7px 6px;text-align:left;border:1px solid rgba(202,158,83,.26);border-radius:6px;background:rgba(94,61,27,.14);color:inherit;cursor:pointer}
+.kungfu-slot-main .hero-name{color:#e7c275}.kungfu-slot-main small{font-size:9px;color:#9f8d70}
+.kungfu-dialog{width:min(96vw,640px);height:68dvh;max-height:68dvh;overflow:hidden}
+.kungfu-modal-inner{height:100%;display:flex;flex-direction:column;padding:12px}
+.kungfu-dialog .modal-head{flex:0 0 auto;margin-bottom:8px}.kungfu-dialog .modal-head h3{margin-top:2px}
+.kungfu-picker-tip{flex:0 0 auto;margin-bottom:8px}
+.kungfu-picker-scroll{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;padding:1px 2px 6px}
+.kungfu-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.kungfu-choice-card{min-height:112px;display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:10px;text-align:left;border:1px solid rgba(190,145,75,.38);border-radius:8px;background:linear-gradient(145deg,rgba(42,31,22,.98),rgba(21,21,18,.98));color:var(--text);cursor:pointer}
+.kungfu-choice-card.divine{border-color:rgba(229,188,86,.56);background:linear-gradient(145deg,rgba(61,46,22,.98),rgba(28,25,18,.98))}.kungfu-choice-card.disabled{opacity:.42}
+.kungfu-choice-name{font-weight:900;font-size:13px}.kungfu-choice-level,.kungfu-choice-status{font-size:9.5px;color:#bca888}.kungfu-choice-status{margin-top:auto;color:#ddb96f}.kungfu-choice-effect{font-size:9.5px;line-height:1.45;color:#9e9482;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.kungfu-detail-panel{flex:1 1 auto;overflow:auto;padding:4px 1px 8px}.kungfu-detail-name{font-family:"STKaiti","KaiTi",serif;font-size:27px;font-weight:900}.kungfu-detail-level{margin:3px 0 12px;color:#c9ad75;font-weight:800}.kungfu-next-effect{margin-top:8px;border-left-color:#7c9275}.kungfu-upgrade-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding:11px;border:1px solid rgba(194,153,85,.22);border-radius:7px;background:rgba(16,17,14,.62)}.kungfu-upgrade-row b{display:block;margin-top:3px;color:#e4bd70}
+@media(max-width:430px){.kungfu-dialog{width:calc(100vw - 14px);height:68dvh;max-height:68dvh}.kungfu-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.kungfu-choice-card{min-height:108px;padding:9px}.kungfu-upgrade-row{align-items:stretch;flex-direction:column}.kungfu-upgrade-row .btn{width:100%}}

@@ -1,0 +1,23 @@
+name: Apply V0.14 Assist Fix
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-v014-assist-fix.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 修正追魂夺命剑回怒
+        run: python tools/v014_assist_fix.py
+      - name: 检查战斗脚本语法
+        run: node --check src/battle.js
+      - name: 提交修正
+        run: |
+          git config user.name "ghzyzttxwd"
+          git config user.email "2697941746@qq.com"
+          git add src/battle.js
+          git commit -m "修正追魂夺命剑协同回怒"
+          git push

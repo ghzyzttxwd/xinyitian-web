@@ -5,6 +5,7 @@ import { createWeaponState, equippedWeaponBonuses } from './weapons.js';
 import { createAncientTombState, ANCIENT_TOMB_DAILY_ATTEMPTS } from './ancienttomb.js';
 import { createAwakeningState, awakeningBaseMultiplier } from './awakening.js';
 import { createWudaoState, wudaoBonuses } from './wudao.js';
+import { createTasksState, createDailyTaskFields, ensureTaskState } from './tasks.js';
 
 function newHeroState(id) {
   return {
@@ -62,8 +63,9 @@ export function createInitialState() {
     weapons:createWeaponState(),
     awakening:createAwakeningState(),
     wudao:createWudaoState(),
+    tasks:createTasksState(),
     recharge: { firstDoubleUsed: {}, first6Claimed: false, vipGiftBought: {} },
-    daily: { date: localDateKey(), staminaBuys: 0, moneyTreeUses: 0, quickBattles: 0, wudaoShopBuys: 0 },
+    daily: { date: localDateKey(), staminaBuys: 0, moneyTreeUses: 0, quickBattles: 0, wudaoShopBuys: 0, ...createDailyTaskFields() },
     specials: {
       '纸皮面具': 0, '桃树': 0, '玉蜂': 0, '襄阳令': 0, '大鸡腿': 0,
       '桃花令': 0, '打狗令': 0,
@@ -106,9 +108,10 @@ export function saveState(state) { state.updatedAt = Date.now(); localStorage.se
 export function normalizeDaily(state) {
   const today = localDateKey();
   if (state.daily.date !== today) {
-    state.daily = { date: today, staminaBuys: 0, moneyTreeUses: 0, quickBattles: 0, wudaoShopBuys: 0 };
+    state.daily = { date: today, staminaBuys: 0, moneyTreeUses: 0, quickBattles: 0, wudaoShopBuys: 0, ...createDailyTaskFields() };
     if (state.ancientTomb) state.ancientTomb.attemptsToday = ANCIENT_TOMB_DAILY_ATTEMPTS;
   }
+  ensureTaskState(state);
 }
 
 export function recoverStamina(state) {

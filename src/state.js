@@ -7,6 +7,13 @@ function newHeroState(id) {
     exp: 0,
     owned: INITIAL_HERO_IDS.includes(id),
     awakened: false,
+    meridian: {
+      progress: 0,
+      atk: 0,
+      def: 0,
+      hp: 0,
+      talent: 0,
+    },
   };
 }
 
@@ -146,10 +153,11 @@ export function heroStats(state, heroId) {
   const h = state.heroes[heroId];
   if (!tpl || !h) return null;
   const growth = 1 + (Math.max(1, h.level) - 1) * 0.085;
+  const meridian = h.meridian || {};
   return {
-    atk: Math.round(tpl.base.atk * growth),
-    def: Math.round(tpl.base.def * growth),
-    hp: Math.round(tpl.base.hp * growth),
+    atk: Math.round(tpl.base.atk * growth + Number(meridian.atk || 0)),
+    def: Math.round(tpl.base.def * growth + Number(meridian.def || 0)),
+    hp: Math.round(tpl.base.hp * growth + Number(meridian.hp || 0)),
     speed: tpl.base.speed + Math.floor((h.level - 1) / 10),
   };
 }

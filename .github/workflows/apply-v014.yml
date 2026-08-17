@@ -29,3 +29,4 @@ jobs:
           git add src index.html sw.js
           git commit -m "V0.14 补齐复杂功法战斗机制"
           git push
+# rerun: 3

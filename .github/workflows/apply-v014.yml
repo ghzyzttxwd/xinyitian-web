@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: 应用V0.14功法机制补丁
-        run: python tools/v014_patch.py
+        run: python tools/v014_runner.py
       - name: 检查脚本语法
         run: |
           node --check src/app.js

@@ -1,8 +1,10 @@
-const CACHE = 'xinyitian-v0.19.0';
+const CACHE = 'xinyitian-v0.20.0';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
+  './assets/original/hero-bg.jpg',
+  './assets/original/jianghu-bg.jpg',
   './manifest.webmanifest',
   './src/data.js',
   './src/state.js',

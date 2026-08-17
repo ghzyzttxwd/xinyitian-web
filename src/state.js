@@ -3,12 +3,12 @@ import { RED_KUNGFU, DIVINE_KUNGFU, equippedKungfuBonuses } from './kungfu.js';
 import { createInnerPowerHeroState, innerPowerBonuses, INNER_POWER_PER_MINUTE, advanceInnerPower } from './innerpower.js';
 import { createWeaponState, equippedWeaponBonuses } from './weapons.js';
 import { createAncientTombState, ANCIENT_TOMB_DAILY_ATTEMPTS } from './ancienttomb.js';
-import { createAwakeningState, awakeningBaseMultiplier, effectiveHeroProfile } from './awakening.js';
+import { createAwakeningState, awakeningBaseMultiplier } from './awakening.js';
 import { createWudaoState, wudaoBonuses } from './wudao.js';
 import { createTasksState, createDailyTaskFields, ensureTaskState } from './tasks.js';
 import { calibratedHeroPower } from './power.js';
 import { createVipExtras } from './vip.js';
-import { baseTalentForRarity } from './meridians.js';
+import { baseTalentForHero } from './meridians.js';
 import { storyHeroProfile } from './story.js';
 
 function newHeroState(id) {
@@ -173,10 +173,9 @@ export function heroKungfuBonuses(state, heroId) {
 }
 
 export function heroTalent(state, heroId) {
-  const base=HEROES[heroId],h=state.heroes?.[heroId];
-  if(!base||!h)return 0;
-  const tpl=storyHeroProfile(state,heroId,effectiveHeroProfile(state,heroId,base));
-  return baseTalentForRarity(tpl?.rarity||base.rarity)+Number(h.meridian?.talent||0);
+  const h=state.heroes?.[heroId];
+  if(!HEROES[heroId]||!h)return 0;
+  return baseTalentForHero(heroId)+Number(h.meridian?.talent||0);
 }
 
 export function heroStats(state, heroId) {

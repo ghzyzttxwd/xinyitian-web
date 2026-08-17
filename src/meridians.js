@@ -1,11 +1,12 @@
-// 用户确认原版侠客按品质自带初始天赋；现有提取档案没有保留 xiake 表的精确初始值。
-// V0.19 先用单机V1暂定分档，后续若重新取得 v580 原表，只需替换本配置。
-export const BASE_TALENT_BY_RARITY = Object.freeze({3:140,4:160,5:180,6:200,7:220});
-export function baseTalentForRarity(rarity){
-  const r=Math.max(0,Math.floor(Number(rarity)||0));
-  if(r>=7)return 220;
-  return Number(BASE_TALENT_BY_RARITY[r]||0);
-}
+// 原版 v580 `xiake.cstianfu` 初始天赋。不同侠客即使同品质也有不同档位。
+// 黄药师/洪七公为单机版补入角色，原版没有正式侠客行，按后期五侠档位暂定280。
+export const BASE_TALENT_BY_HERO = Object.freeze({
+  player:100, wuji:100, xiaozhao:160, yangxiao:220, yangdingtian:240, guoxiang:240,
+  zhangsanfeng:260, duer:260, dunan:260, dujie:260, huiyue:260, huangshan:240,
+  yangguo:280, huangrong:280, xiaolongnv:280, guojing:280, zhoubotong:280,
+  huangyaoshi:280, hongqigong:280,
+});
+export function baseTalentForHero(heroId){ return Number(BASE_TALENT_BY_HERO[heroId]||0); }
 
 export const MERIDIAN_POINT_NAMES = ['经渠','太渊','鱼际','少商','中府','云门','天府','侠白','孔最','命门'];
 

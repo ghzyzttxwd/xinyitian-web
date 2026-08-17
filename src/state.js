@@ -83,6 +83,15 @@ export function localDateKey() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+function normalizeHeroKungfuStates(state){
+  for(const h of Object.values(state?.heroes||{})){
+    h.kungfu=h.kungfu||{};
+    const eq=Array.isArray(h.kungfu.equipped)?h.kungfu.equipped.slice(0,8):[];
+    while(eq.length<8)eq.push(null);
+    h.kungfu.equipped=eq;
+  }
+}
+
 function mergeDefaults(saved, fresh) {
   if (Array.isArray(fresh)) return Array.isArray(saved) ? saved : fresh;
   if (!fresh || typeof fresh !== 'object') return saved ?? fresh;
@@ -100,7 +109,7 @@ export function loadState() {
     if (!raw) return fresh;
     const parsed = JSON.parse(raw);
     const state = mergeDefaults(parsed, fresh);
-    normalizeDaily(state); recoverStamina(state); recoverInnerPower(state); recalcVip(state);
+    normalizeHeroKungfuStates(state); normalizeDaily(state); recoverStamina(state); recoverInnerPower(state); recalcVip(state);
     return state;
   } catch (err) {
     console.warn('存档读取失败，使用新档', err);
@@ -218,7 +227,7 @@ export function exportSave(state) {
 export async function importSaveFile(file) {
   const text=await file.text(), parsed=JSON.parse(text);
   if (!parsed || typeof parsed!=='object' || !parsed.player) throw new Error('不是有效的新倚天存档');
-  const state=mergeDefaults(parsed,createInitialState()); normalizeDaily(state); recoverStamina(state); recoverInnerPower(state); recalcVip(state); saveState(state); return state;
+  const state=mergeDefaults(parsed,createInitialState()); normalizeHeroKungfuStates(state); normalizeDaily(state); recoverStamina(state); recoverInnerPower(state); recalcVip(state); saveState(state); return state;
 }
 
 export function resetSave() { localStorage.removeItem(SAVE_KEY); return createInitialState(); }

@@ -1,6 +1,7 @@
 const pageEl = document.querySelector('#page');
 const bottomMore = document.querySelector('.bottom-nav [data-page="more"]');
 const SAVE_KEY = 'xinyitian_single_v1';
+let activePanel=null;
 
 function readSave(){
   try{return JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')||{};}catch{return {};}
@@ -71,16 +72,23 @@ function renderTowerPanel(){
 function applyNavigationCleanup(){
   removeLegacyHomeEntries();
   simplifyChallenge();
+  if(pageEl.dataset.page==='more'&&pageEl.dataset.more==='hub'&&activePanel==='mainline'){renderMainlinePanel();return;}
+  if(pageEl.dataset.page==='more'&&pageEl.dataset.more==='hub'&&activePanel==='tower'){renderTowerPanel();return;}
   enhanceJianghuHub();
 }
 
 pageEl.addEventListener('click',e=>{
   const btn=e.target.closest('button');
   if(!btn)return;
-  if(btn.dataset.jhPanel==='mainline'){renderMainlinePanel();return;}
-  if(btn.dataset.jhPanel==='tower'){renderTowerPanel();return;}
-  if(btn.dataset.jhBack!==undefined){bottomMore?.click();}
+  if(btn.dataset.jhPanel==='mainline'){activePanel='mainline';renderMainlinePanel();return;}
+  if(btn.dataset.jhPanel==='tower'){activePanel='tower';renderTowerPanel();return;}
+  if(btn.dataset.jhBack!==undefined){activePanel=null;bottomMore?.click();}
 });
+
+document.querySelector('.bottom-nav')?.addEventListener('click',e=>{
+  const btn=e.target.closest('[data-page]');
+  if(btn)activePanel=null;
+},true);
 
 let queued=false;
 const observer=new MutationObserver(()=>{

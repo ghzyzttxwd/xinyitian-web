@@ -25,8 +25,8 @@ function simplifyChallenge(){
   }
   const heading=pageEl.querySelector(':scope > .section-title');
   const h2=heading?.querySelector('h2'), small=heading?.querySelector('small');
-  if(h2)h2.textContent='古墓奇遇';
-  if(small)small.textContent='内力资源挑战';
+  if(h2&&h2.textContent!=='古墓奇遇')h2.textContent='古墓奇遇';
+  if(small&&small.textContent!=='内力资源挑战')small.textContent='内力资源挑战';
 }
 
 function hubTile(kind,seal,title,sub){
@@ -44,12 +44,12 @@ function enhanceJianghuHub(){
   if(!grid)return;
   let main=grid.querySelector('[data-more-section="mainline"]')||grid.querySelector('[data-jh-panel="mainline"]');
   let tower=grid.querySelector('[data-more-section="tower"]')||grid.querySelector('[data-jh-panel="tower"]');
-  if(!main){main=hubTile('mainline','主','主线','挑战当前幕 / 连续速战');grid.prepend(main);}
+  if(!main){main=hubTile('mainline','主','主线','挑战当前幕 / 连续速战');grid.insertBefore(main,grid.firstChild);}
   if(!tower){tower=hubTile('tower','塔','少林千宝塔','永久爬塔 / 经脉资源');grid.insertBefore(tower,main.nextSibling);}
   const vip=grid.querySelector('[data-more-section="vip"]');
-  grid.prepend(main);
-  grid.insertBefore(tower,main.nextSibling);
-  if(vip)grid.insertBefore(vip,tower.nextSibling);
+  if(grid.firstElementChild!==main)grid.insertBefore(main,grid.firstElementChild);
+  if(main.nextElementSibling!==tower)grid.insertBefore(tower,main.nextElementSibling);
+  if(vip&&tower.nextElementSibling!==vip)grid.insertBefore(vip,tower.nextElementSibling);
 }
 
 function subHead(title,sub){
@@ -82,6 +82,11 @@ pageEl.addEventListener('click',e=>{
   if(btn.dataset.jhBack!==undefined){bottomMore?.click();}
 });
 
-const observer=new MutationObserver(()=>applyNavigationCleanup());
+let queued=false;
+const observer=new MutationObserver(()=>{
+  if(queued)return;
+  queued=true;
+  queueMicrotask(()=>{queued=false;applyNavigationCleanup();});
+});
 observer.observe(pageEl,{childList:true,subtree:true});
 applyNavigationCleanup();

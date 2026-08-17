@@ -1,0 +1,61 @@
+name: Hotfix Kungfu Navigation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/hotfix-kungfu-nav.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch kungfu rendering bug and cache version
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          app = Path('src/app.js')
+          text = app.read_text(encoding='utf-8')
+          target = 'heroTalent(state,heroId)'
+          count = text.count(target)
+          if count != 2:
+              raise SystemExit(f'Expected exactly 2 broken heroId references, found {count}')
+          app.write_text(text.replace(target, 'heroTalent(state,selectedGrowthHero)'), encoding='utf-8')
+          sw = Path('sw.js')
+          sw_text = sw.read_text(encoding='utf-8')
+          old = "const CACHE = 'xinyitian-v0.20.0';"
+          if old not in sw_text:
+              raise SystemExit('Expected V0.20.0 cache marker not found')
+          sw.write_text(sw_text.replace(old, "const CACHE = 'xinyitian-v0.20.1';", 1), encoding='utf-8')
+          PY
+
+      - name: Remove stale temporary bytecode
+        run: rm -rf scripts/__pycache__
+
+      - name: Syntax and regression checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in src/*.js sw.js; do node --check "$f"; done
+          ! grep -R "heroTalent(state,heroId)" -n src/app.js
+          test "$(grep -o "heroTalent(state,selectedGrowthHero)" src/app.js | wc -l)" -ge 3
+          grep -q "xinyitian-v0.20.1" sw.js
+
+      - name: Remove workflow and commit hotfix
+        shell: bash
+        run: |
+          rm -f .github/workflows/hotfix-kungfu-nav.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: restore kungfu tab navigation"
+          git push origin main

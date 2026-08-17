@@ -1,0 +1,55 @@
+name: V0.20 One-shot Original Art
+
+on:
+  push:
+    paths:
+      - '.github/workflows/v020-one-shot.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check patch script
+        run: python -m py_compile scripts/v020_patch.py
+
+      - name: Apply V0.20 patch
+        run: python scripts/v020_patch.py
+
+      - name: Syntax check
+        run: |
+          node --check src/app.js
+          node --check src/state.js
+          node --check src/meridians.js
+          node --check sw.js
+
+      - name: Verify original data and art wiring
+        run: |
+          test -s assets/original/hero-bg.jpg
+          test -s assets/original/jianghu-bg.jpg
+          grep -n "BASE_TALENT_BY_HERO" src/meridians.js
+          grep -n "yangguo:280" src/meridians.js
+          grep -n "baseTalentForHero(heroId)" src/state.js
+          grep -n "assets/original/hero-bg.jpg" styles.css
+          grep -n "assets/original/jianghu-bg.jpg" styles.css
+          grep -n "V0.20" index.html
+
+      - name: Remove temporary patch files
+        run: |
+          rm -f scripts/v020_patch.py
+          rm -f .github/workflows/v020-one-shot.yml
+
+      - name: Commit V0.20
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: reuse original art and correct V0.20 talents"
+          git push origin main

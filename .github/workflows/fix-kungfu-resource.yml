@@ -74,9 +74,36 @@ jobs:
           set -euo pipefail
           python3 -m http.server 4174 --bind 127.0.0.1 >/dev/null 2>&1 & P=$!; trap 'kill $P || true' EXIT
           cat >/tmp/pw/k.cjs <<'JS'
-          const{chromium}=require('playwright');const A=(v,m)=>{if(!v)throw Error(m)};(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:390,height:844}});const errs=[];p.on('pageerror',e=>errs.push(String(e)));await p.goto('http://127.0.0.1:4174/',{waitUntil:'networkidle'});const id=await p.evaluate(async()=>{const m=await import('/src/state.js');const s=m.createInitialState(),id=Object.keys(s.kungfu.red)[0];s.heroes.huangshan.owned=true;s.heroes.huangshan.meridian.talent=20;s.heroes.huangshan.kungfu.equipped=Array(8).fill(null);s.kungfu.red[id]={level:1,copies:0};localStorage.setItem('xinyitian_single_v1',JSON.stringify(s));return id});await p.reload({waitUntil:'networkidle'});const r=await p.evaluate(id=>{document.querySelector('.nav-item[data-page="growth"]')?.click();const sel=document.querySelector('#growthHeroSelect');if(!sel)return{stage:'no-select'};sel.value='huangshan';sel.dispatchEvent(new Event('change',{bubbles:true}));const tab=document.querySelector('[data-growth-tab="kungfu"]');if(!tab)return{stage:'no-tab'};tab.click();const head=document.querySelector('.kungfu-main-card .section-title')?.innerText||'';const open=document.querySelectorAll('.kungfu-slot.open').length;const btn=document.querySelector(`button[data-equip-kungfu="${id}"]`);const before={head,open,btn:!!btn,disabled:btn?.disabled??null};if(btn&&!btn.disabled)btn.click();const saved=JSON.parse(localStorage.getItem('xinyitian_single_v1'));return{stage:'done',before,slot:!!document.querySelector('[data-unequip-slot="0"]'),ref:saved.heroes.huangshan.kungfu.equipped[0]};},id);A(r.stage==='done',JSON.stringify(r));A(r.before.head.includes('天赋 260'),JSON.stringify(r));A(r.before.head.includes('已开 3/8槽'),JSON.stringify(r));A(r.before.open===3,JSON.stringify(r));A(r.before.btn,JSON.stringify(r));A(r.before.disabled===false,JSON.stringify(r));A(r.slot,JSON.stringify(r));A(r.ref===id,JSON.stringify(r));A(errs.length===0,errs.join('|'));await b.close()})().catch(e=>{const msg=String(e.message||e).replace(/%/g,'%25').replace(/\r/g,'%0D').replace(/\n/g,'%0A');console.error(`::error file=src/app.js,line=1::${msg}`);process.exit(1)});
+          const{chromium}=require('playwright');const A=(v,m)=>{if(!v)throw Error(m)};
+          (async()=>{
+            const stateMod=await import('file://'+process.env.GITHUB_WORKSPACE+'/src/state.js');
+            const seed=stateMod.createInitialState();
+            const id=Object.keys(seed.kungfu.red)[0];
+            seed.heroes.huangshan.owned=true;
+            seed.heroes.huangshan.meridian.talent=20;
+            seed.heroes.huangshan.kungfu.equipped=Array(8).fill(null);
+            seed.kungfu.red[id]={level:1,copies:0};
+            const b=await chromium.launch();const p=await b.newPage({viewport:{width:390,height:844}});const errs=[];p.on('pageerror',e=>errs.push(String(e)));
+            await p.addInitScript(save=>localStorage.setItem('xinyitian_single_v1',JSON.stringify(save)),seed);
+            await p.goto('http://127.0.0.1:4174/',{waitUntil:'networkidle'});
+            const r=await p.evaluate(id=>{
+              document.querySelector('.nav-item[data-page="growth"]')?.click();
+              const sel=document.querySelector('#growthHeroSelect');if(!sel)return{stage:'no-select'};
+              const has=[...sel.options].some(o=>o.value==='huangshan');if(!has)return{stage:'no-huangshan',values:[...sel.options].map(o=>o.value)};
+              sel.value='huangshan';sel.dispatchEvent(new Event('change',{bubbles:true}));
+              const tab=document.querySelector('[data-growth-tab="kungfu"]');if(!tab)return{stage:'no-tab'};tab.click();
+              const head=document.querySelector('.kungfu-main-card .section-title')?.innerText||'';
+              const open=document.querySelectorAll('.kungfu-slot.open').length;
+              const btn=document.querySelector(`button[data-equip-kungfu="${id}"]`);
+              const before={head,open,btn:!!btn,disabled:btn?.disabled??null};
+              if(btn&&!btn.disabled)btn.click();
+              const saved=JSON.parse(localStorage.getItem('xinyitian_single_v1'));
+              return{stage:'done',before,slot:!!document.querySelector('[data-unequip-slot="0"]'),ref:saved.heroes.huangshan.kungfu.equipped[0]};
+            },id);
+            A(r.stage==='done',JSON.stringify(r));A(r.before.head.includes('天赋 260'),JSON.stringify(r));A(r.before.head.includes('已开 3/8槽'),JSON.stringify(r));A(r.before.open===3,JSON.stringify(r));A(r.before.btn,JSON.stringify(r));A(r.before.disabled===false,JSON.stringify(r));A(r.slot,JSON.stringify(r));A(r.ref===id,JSON.stringify(r));A(errs.length===0,errs.join('|'));await b.close();
+          })().catch(e=>{const msg=String(e.message||e).replace(/%/g,'%25').replace(/\r/g,'%0D').replace(/\n/g,'%0A');console.error(`::error file=src/app.js,line=1::${msg}`);process.exit(1)});
           JS
-          cd /tmp/pw && node k.cjs
+          cd /tmp/pw && GITHUB_WORKSPACE="$GITHUB_WORKSPACE" node k.cjs
 
       - name: Commit fixes and remove workflow
         run: |

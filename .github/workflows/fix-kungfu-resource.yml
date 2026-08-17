@@ -1,0 +1,143 @@
+name: Fix Kungfu Equip and Mobile Resources
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-kungfu-resource.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch equip logic and resource bar
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          app=Path('src/app.js')
+          s=app.read_text()
+          old="canEquip=owned&&!used&&kungfuSlotsForTalent(state.heroes[selectedGrowthHero].meridian?.talent||0)>0;"
+          new="canEquip=owned&&!used&&firstOpenKungfuSlot(selectedGrowthHero)>=0;"
+          if s.count(old)!=1:
+              raise SystemExit(f'red equip condition count={s.count(old)}')
+          s=s.replace(old,new,1)
+
+          old_decl="requirements=recipe.map(r=>r.kind==='kungfu'?`${r.name} Lv.10`:`${r.name}×${r.count}`).join(' + ');"
+          new_decl="requirements=recipe.map(r=>r.kind==='kungfu'?`${r.name} Lv.10`:`${r.name}×${r.count}`).join(' + '),canEquip=owned&&!used&&firstOpenKungfuSlot(selectedGrowthHero)>=0;"
+          if s.count(old_decl)!=1:
+              raise SystemExit(f'divine declaration count={s.count(old_decl)}')
+          s=s.replace(old_decl,new_decl,1)
+
+          old_btn='${owned?`<button class="btn btn-gold" data-equip-divine="${k.id}" ${used?\'disabled\':\'\'}>${used?\'已装备\':\'装备\'}</button>`:'
+          new_btn='${owned?`<button class="btn btn-gold" data-equip-divine="${k.id}" ${canEquip?\'\':\'disabled\'}>${used?\'已装备\':\'装备\'}</button>`:'
+          if s.count(old_btn)!=1:
+              raise SystemExit(f'divine button count={s.count(old_btn)}')
+          s=s.replace(old_btn,new_btn,1)
+          app.write_text(s)
+
+          css=Path('styles.css')
+          c=css.read_text()
+          marker='/* V0.21.1：手机资源栏固定两行 */'
+          if marker in c:
+              raise SystemExit('mobile resource patch already present')
+          c += '''\n\n/* V0.21.1：手机资源栏固定两行 */\n@media(max-width:600px){\n  .resource-bar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;overflow-x:hidden;padding:4px;scrollbar-width:none}\n  .resource-item{min-width:0;width:auto;padding:4px 3px;gap:3px;justify-content:center;text-align:center;border-right:1px solid rgba(210,170,101,.13);overflow:hidden}\n  .resource-item:nth-child(5n){border-right:0}\n  .resource-icon{width:16px;height:16px;flex:0 0 16px}\n  .resource-label{font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:0}\n  .resource-value{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n}\n'''
+          css.write_text(c)
+
+          sw=Path('sw.js')
+          w=sw.read_text()
+          if "xinyitian-v0.21.0" not in w:
+              raise SystemExit('unexpected service worker cache version')
+          sw.write_text(w.replace("xinyitian-v0.21.0","xinyitian-v0.21.1",1))
+          PY
+
+      - name: Static checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in src/*.js sw.js; do node --check "$f"; done
+          grep -Fq 'canEquip=owned&&!used&&firstOpenKungfuSlot(selectedGrowthHero)>=0;' src/app.js
+          ! grep -Fq 'kungfuSlotsForTalent(state.heroes[selectedGrowthHero].meridian?.talent||0)>0' src/app.js
+          grep -Fq 'grid-template-columns:repeat(5,minmax(0,1fr))' styles.css
+          grep -Fq "xinyitian-v0.21.1" sw.js
+
+      - name: Browser regression test
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/xyt-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          mkdir -p /tmp/pw && cd /tmp/pw
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+          cat > test.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const assert=(v,m)=>{if(!v)throw new Error(m)};
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:390,height:844}});
+            const errors=[];
+            page.on('pageerror',e=>errors.push(String(e)));
+            await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});
+            const resource=await page.evaluate(()=>{
+              const bar=document.querySelector('#resourceBar'),items=[...bar.children];
+              return {count:items.length,rows:new Set(items.map(x=>x.offsetTop)).size,overflow:bar.scrollWidth>bar.clientWidth};
+            });
+            assert(resource.count===9,`resource count=${resource.count}`);
+            assert(resource.rows===2,`resource rows=${resource.rows}`);
+            assert(!resource.overflow,'resource bar horizontally overflows');
+
+            const redId=await page.evaluate(async()=>{
+              const m=await import('./src/state.js');
+              const s=m.createInitialState();
+              const redId=Object.keys(s.kungfu.red)[0];
+              s.heroes.huangshan.owned=true;
+              s.heroes.huangshan.meridian.talent=20;
+              s.heroes.huangshan.kungfu.equipped=[null,null,null,null,null,null,null,null];
+              s.kungfu.red[redId]={level:1,copies:0};
+              localStorage.setItem('xinyitian_single_v1',JSON.stringify(s));
+              return redId;
+            });
+            await page.reload({waitUntil:'networkidle'});
+            await page.click('.nav-item[data-page="growth"]');
+            await page.selectOption('#growthHeroSelect','huangshan');
+            await page.click('[data-growth-tab="kungfu"]');
+            const head=await page.locator('.kungfu-main-card .section-title').innerText();
+            assert(head.includes('天赋 260'),`wrong talent header: ${head}`);
+            assert(head.includes('已开 3/8槽'),`wrong slot header: ${head}`);
+            assert(await page.locator('.kungfu-slot.open').count()===3,'huangshan should have 3 open slots');
+            const equip=page.locator(`button[data-equip-kungfu="${redId}"]`);
+            assert(await equip.count()===1,'red kungfu equip button missing');
+            assert(await equip.isEnabled(),'red kungfu equip button disabled');
+            await equip.click();
+            assert(await page.locator('[data-unequip-slot="0"]').count()===1,'slot 1 did not receive kungfu');
+            const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('xinyitian_single_v1')));
+            assert(saved.heroes.huangshan.kungfu.equipped[0]===redId,'save did not persist equipped kungfu');
+            assert(errors.length===0,`page errors: ${errors.join(' | ')}`);
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node test.cjs
+
+      - name: Commit fixes and remove workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/fix-kungfu-resource.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/app.js styles.css sw.js .github/workflows/fix-kungfu-resource.yml
+          git commit -m 'fix: equip kungfu and wrap mobile resources'
+          git push origin main

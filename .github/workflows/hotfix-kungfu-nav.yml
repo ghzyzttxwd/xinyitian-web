@@ -23,19 +23,29 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+
           app = Path('src/app.js')
           text = app.read_text(encoding='utf-8')
-          target = 'heroTalent(state,heroId)'
-          count = text.count(target)
-          if count != 2:
-              raise SystemExit(f'Expected exactly 2 broken heroId references, found {count}')
-          app.write_text(text.replace(target, 'heroTalent(state,selectedGrowthHero)'), encoding='utf-8')
+          broken = [
+              "const h=state.heroes[selectedGrowthHero],slots=kungfuSlotsForTalent(heroTalent(state,heroId)),eq=h.kungfu?.equipped||[];",
+              "const h=state.heroes[selectedGrowthHero],slots=kungfuSlotsForTalent(heroTalent(state,heroId));",
+          ]
+          fixed = [
+              "const h=state.heroes[selectedGrowthHero],slots=kungfuSlotsForTalent(heroTalent(state,selectedGrowthHero)),eq=h.kungfu?.equipped||[];",
+              "const h=state.heroes[selectedGrowthHero],slots=kungfuSlotsForTalent(heroTalent(state,selectedGrowthHero));",
+          ]
+          for old, new in zip(broken, fixed):
+              if text.count(old) != 1:
+                  raise SystemExit(f'Expected exactly one target: {old}')
+              text = text.replace(old, new, 1)
+          app.write_text(text, encoding='utf-8')
+
           sw = Path('sw.js')
           sw_text = sw.read_text(encoding='utf-8')
-          old = "const CACHE = 'xinyitian-v0.20.0';"
-          if old not in sw_text:
-              raise SystemExit('Expected V0.20.0 cache marker not found')
-          sw.write_text(sw_text.replace(old, "const CACHE = 'xinyitian-v0.20.1';", 1), encoding='utf-8')
+          old_cache = "const CACHE = 'xinyitian-v0.20.0';"
+          if sw_text.count(old_cache) != 1:
+              raise SystemExit('Expected V0.20.0 service-worker cache marker not found exactly once')
+          sw.write_text(sw_text.replace(old_cache, "const CACHE = 'xinyitian-v0.20.1';", 1), encoding='utf-8')
           PY
 
       - name: Remove stale temporary bytecode
@@ -46,9 +56,14 @@ jobs:
         run: |
           set -euo pipefail
           for f in src/*.js sw.js; do node --check "$f"; done
-          ! grep -R "heroTalent(state,heroId)" -n src/app.js
-          test "$(grep -o "heroTalent(state,selectedGrowthHero)" src/app.js | wc -l)" -ge 3
+          test "$(grep -o "heroTalent(state,heroId)" src/app.js | wc -l)" -eq 1
+          grep -q "function firstOpenKungfuSlot(heroId).*heroTalent(state,heroId)" src/app.js
+          grep -q "function kungfuEquipSlotsHtml" src/app.js
+          grep -q "heroTalent(state,selectedGrowthHero)),eq=h.kungfu" src/app.js
+          grep -q "function renderKungfuPanel" src/app.js
+          grep -q "slots=kungfuSlotsForTalent(heroTalent(state,selectedGrowthHero));" src/app.js
           grep -q "xinyitian-v0.20.1" sw.js
+          test ! -d scripts/__pycache__
 
       - name: Remove workflow and commit hotfix
         shell: bash

@@ -28,8 +28,14 @@ export function equippedKungfuBonuses(heroKungfu){
  }
  return out;
 }
+const CONTROL_KUNGFU_EFFECTS={
+  '106401':{kind:'skillDrainRageControl',chance:[.46,.52,.58,.64,.70,.76,.82,.88,.94,1],extraChance:[.22,.28,.34,.40,.46,.52,.58,.64,.70,.76],amount:1,extraAmount:2},
+  '106501':{kind:'rageTransfer',chance:[.30,.37,.44,.51,.58,.65,.72,.78,.84,.90],maxPerRound:5},
+  '106601':{kind:'consumeControlDamage',chance:[.30,.38,.46,.54,.62,.70,.78,.86,.93,1],maxControls:[1,1,1,2,2,2,3,3,3,4],bonusPerControl:[.05,.06,.07,.08,.09,.10,.11,.12,.14,.16]},
+};
+
 export function effectAtLevel(id,level){
- const e=KUNGFU_EFFECTS[id]; if(!e)return null;
+ const e=KUNGFU_EFFECTS[id]||CONTROL_KUNGFU_EFFECTS[id]; if(!e)return null;
  const i=Math.max(0,Math.min(9,Number(level||1)-1)),out={kind:e.kind};
  for(const [k,v] of Object.entries(e)){if(k!=='kind')out[k]=Array.isArray(v)?v[i]:v;}
  return out;

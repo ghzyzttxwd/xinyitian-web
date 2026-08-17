@@ -47,7 +47,7 @@ export const HEROES = {
     id: 'yangxiao', name: '杨逍', rarity: 6, role: '群攻/封穴', unlock: 30,
     recruit: { type: 'legendToken', cost: 600 },
     base: { atk: 255, def: 132, hp: 2680, speed: 111 },
-    skill: { name: '乾坤大挪移', target: 'all', multiplier: 1.18, rageCost: 4 },
+    skill: { name: '乾坤大挪移', target: 'all', multiplier: 1.18, rageCost: 4, abnormal:[{type:'seal',chance:.28,duration:1}] },
   },
   yangdingtian: {
     id: 'yangdingtian', name: '阳顶天', rarity: 6, role: '输出', unlock: 55,
@@ -72,18 +72,21 @@ export const HEROES = {
     recruit: { type: 'legendToken', cost: 1200 },
     base: { atk: 315, def: 190, hp: 3560, speed: 102 },
     skill: { name: '金刚伏魔', target: 'all', multiplier: 1.12, rageCost: 4 },
+    combat: { buddhaNormal:1, buddhaSkill:2, buddhaSkillBonusPerStack:.06 },
   },
   dunan: {
     id: 'dunan', name: '渡难', rarity: 6, role: '控制', unlock: 90,
     recruit: { type: 'legendToken', cost: 600 },
     base: { atk: 300, def: 176, hp: 3380, speed: 104 },
-    skill: { name: '须弥山掌', target: 'all', multiplier: 1.08, rageCost: 4 },
+    skill: { name: '须弥山掌', target: 'all', multiplier: 1.08, rageCost: 4, abnormal:[{type:'stun',chance:.30,duration:1}] },
+    combat: { buddhaSkill:1 },
   },
   dujie: {
     id: 'dujie', name: '渡劫', rarity: 6, role: '防御', unlock: 90,
     recruit: { type: 'legendToken', cost: 600 },
     base: { atk: 270, def: 218, hp: 3920, speed: 99 },
     skill: { name: '伏魔护体', target: 'all', multiplier: .92, rageCost: 4 },
+    combat: { vajraGuardOnSkill:1 },
   },
   huiyue: {
     id: 'huiyue', name: '辉月使', rarity: 6, role: '增攻/回怒', unlock: 100,

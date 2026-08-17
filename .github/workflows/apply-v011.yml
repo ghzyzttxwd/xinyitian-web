@@ -1,0 +1,28 @@
+name: Apply V0.11
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-v011.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 应用收口校准补丁
+        run: python tools/v011_patch.py
+      - name: 检查脚本语法
+        run: |
+          node --check src/app.js
+          node --check src/state.js
+          node --check src/data.js
+          node --check src/battle.js
+          node --check src/power.js
+      - name: 提交V0.11
+        run: |
+          git config user.name "ghzyzttxwd"
+          git config user.email "2697941746@qq.com"
+          git add src index.html sw.js
+          git commit -m "V0.11 收口校准：速战五次、客栈定向招募、原版战力基准"
+          git push

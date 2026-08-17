@@ -6,6 +6,7 @@ import { createAncientTombState, ANCIENT_TOMB_DAILY_ATTEMPTS } from './ancientto
 import { createAwakeningState, awakeningBaseMultiplier } from './awakening.js';
 import { createWudaoState, wudaoBonuses } from './wudao.js';
 import { createTasksState, createDailyTaskFields, ensureTaskState } from './tasks.js';
+import { calibratedHeroPower } from './power.js';
 
 function newHeroState(id) {
   return {
@@ -187,9 +188,9 @@ export function heroStats(state, heroId) {
 }
 
 export function heroPower(state, heroId) {
-  const s = heroStats(state, heroId); if (!s) return 0;
+  const s = heroStats(state, heroId), tpl=HEROES[heroId]; if (!s||!tpl) return 0;
   const k = heroKungfuBonuses(state, heroId), w=equippedWeaponBonuses(state,heroId);
-  return Math.round(s.atk*4.6 + s.def*3.5 + s.hp*.7 + s.speed*6 + (s.hit+s.dodge+s.crit+s.antiCrit+s.damageBonus+s.damageReduction)*1200 + k.power + w.power);
+  return calibratedHeroPower(heroId,tpl.base,s,{kungfuPower:k.power,weaponPower:w.power});
 }
 
 export function totalPower(state) { return state.party.filter(Boolean).reduce((sum,id)=>sum+heroPower(state,id),0); }

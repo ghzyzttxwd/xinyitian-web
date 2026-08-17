@@ -1,4 +1,4 @@
-import { HEROES, chapterEnemyPower, towerEnemyPower } from './data.js';
+import { HEROES, chapterEnemyPower, towerEnemyPower, chapterEnemyRating, towerEnemyRating } from './data.js';
 import { heroStats } from './state.js';
 import { RED_KUNGFU, DIVINE_KUNGFU, effectAtLevel } from './kungfu.js';
 import { weaponBattleEffects } from './weapons.js';
@@ -29,14 +29,14 @@ function effectOf(fighter,kind){ return fighter.effects?.find(x=>x.kind===kind) 
 
 function cloneFighter(base) {
   const rage=base.initialRage||0;
-  return { ...base, hpNow:base.hp, rage, alive:true, shield:0, reviveUsed:0 };
+  return { ...base, hpNow:base.hp, rage, alive:true, shield:0, reviveUsed:0, abnormalImmuneThroughRound:base.passive?.firstRoundAbnormalImmune?1:0 };
 }
 
 function playerTeam(state) {
   const team=state.party.filter(Boolean).map(id=>{
     const tpl=applyWudaoProfile(state,id,effectiveHeroProfile(state,id,HEROES[id])), s=heroStats(state,id), effects=effectsForHero(state,id);
     const rageEffect=effects.find(x=>x.kind==='rageBurst'),dodgeStart=effects.find(x=>x.kind==='dodgeStart');
-    return cloneFighter({ id,name:tpl.name,side:'player',...s,dodge:Number(s.dodge||0)+Number(dodgeStart?.value||0),skill:tpl.skill,effects,initialRage:Number(s.initialRage||0)+Number(rageEffect?.initialRage||0) });
+    return cloneFighter({ id,name:tpl.name,side:'player',...s,dodge:Number(s.dodge||0)+Number(dodgeStart?.value||0),skill:tpl.skill,passive:tpl.passive||{},effects,initialRage:Number(s.initialRage||0)+Number(rageEffect?.initialRage||0) });
   });
   const maxAtk=Math.max(0,...team.map(x=>x.atk));
   for(const f of team){const e=effectOf(f,'copyHighestAtk');if(e)f.atk+=Math.round(maxAtk*e.ratio);}
@@ -122,7 +122,7 @@ function performOne(actor,own,enemies,log,forceSkill=false){
   }else actor.rage=Math.min(8,actor.rage+2);
   let killed=false,total=0,misses=0,crits=0;
   const pierce=effectOf(actor,'ignoreDef');
-  for(const target of targets){const hit=damage(actor,target,skillMultiplier,(action.ignoreDef||0)+Number(pierce?.value||0));if(hit.miss){misses++;continue;}const wasAlive=target.alive;applyDamage(target,hit.amount,log);total+=hit.amount;if(hit.crit)crits++;const execute=effectOf(actor,'execute');if(target.alive&&execute&&target.hpNow/target.hp<=execute.threshold&&Math.random()<execute.chance){log.push(`${actor.name}的【屠龙刀】触发斩杀！`);applyDamage(target,target.hpNow,log);}const reflect=effectOf(target,'reflect');if(reflect&&actor.alive){const back=Math.round(hit.amount*reflect.ratio);if(back>0){applyDamage(actor,back,log);log.push(`${target.name}的【金丝软猬甲】反震 ${back.toLocaleString()} 伤害。`);}}if(!target.alive)tryTeamRevive(target,enemies,log);const healHit=effectOf(target,'healOnHit');if(healHit&&Math.random()<healHit.chance)healTeam(enemies,target,healHit.ratio,log);const grow=effectOf(target,'afterHitAtk');if(grow&&target.alive){target.godAtkStacks=Number(target.godAtkStacks||0);if(target.godAtkStacks<grow.maxStacks){target.atk=Math.round(target.atk*(1+grow.ratio));target.godAtkStacks+=1;}}if(wasAlive&&!target.alive)killed=true;}
+  for(const target of targets){const hit=damage(actor,target,skillMultiplier,(action.ignoreDef||0)+Number(pierce?.value||0));if(hit.miss){misses++;continue;}const wasAlive=target.alive,flat=useSkill?Number(action.flatDamage||0):0,amount=hit.amount+flat;applyDamage(target,amount,log);total+=amount;if(hit.crit)crits++;const execute=effectOf(actor,'execute');if(target.alive&&execute&&target.hpNow/target.hp<=execute.threshold&&Math.random()<execute.chance){log.push(`${actor.name}的【屠龙刀】触发斩杀！`);applyDamage(target,target.hpNow,log);}const reflect=effectOf(target,'reflect');if(reflect&&actor.alive){const back=Math.round(amount*reflect.ratio);if(back>0){applyDamage(actor,back,log);log.push(`${target.name}的【金丝软猬甲】反震 ${back.toLocaleString()} 伤害。`);}}if(!target.alive)tryTeamRevive(target,enemies,log);const healHit=effectOf(target,'healOnHit');if(healHit&&Math.random()<healHit.chance)healTeam(enemies,target,healHit.ratio,log);const grow=effectOf(target,'afterHitAtk');if(grow&&target.alive){target.godAtkStacks=Number(target.godAtkStacks||0);if(target.godAtkStacks<grow.maxStacks){target.atk=Math.round(target.atk*(1+grow.ratio));target.godAtkStacks+=1;}}if(wasAlive&&!target.alive)killed=true;}
   log.push(`${actor.name}${useSkill?`施展【${action.name}】`:'普通攻击'}，造成 ${total.toLocaleString()} 伤害${crits?'，触发暴击':''}${misses?`，${misses}次闪避`:''}。${killed?' 有敌人倒下！':''}`);
   if(useSkill&&skill.refundOnKill&&killed)actor.rage+=skill.rageCost||4;
   const steal=effectOf(actor,'lifesteal');if(steal&&total>0&&actor.alive){const heal=Math.round(total*steal.ratio);actor.hpNow=Math.min(actor.hp,actor.hpNow+heal);log.push(`${actor.name}凭【玄铁指环】吸血 ${heal.toLocaleString()}。`);}
@@ -143,6 +143,8 @@ function act(actor,own,enemies,log){
 
 function simulate(player,enemies,maxRounds=20){
   const log=[];
+  const firstRoundImmune=player.filter(x=>x.abnormalImmuneThroughRound>=1);
+  if(firstRoundImmune.length)log.push(`${firstRoundImmune.map(x=>x.name).join('、')}首回合免疫异常状态。`);
   for(let round=1;round<=maxRounds;round++){
     if(!living(player).length||!living(enemies).length)break;
     log.push(`—— 第${round}回合 ——`);
@@ -153,6 +155,6 @@ function simulate(player,enemies,maxRounds=20){
   return {win,log,playerAlive:living(player).length,enemyAlive:living(enemies).length};
 }
 
-export function runChapterBattle(state){const power=chapterEnemyPower(state.player.chapter);return {...simulate(playerTeam(state),makeEnemyTeam(power,'元兵')),enemyPower:power};}
-export function runTowerBattle(state){const floor=state.tower.highest+1,power=towerEnemyPower(floor);return {...simulate(playerTeam(state),makeEnemyTeam(power,'守塔人')),enemyPower:power,floor};}
+export function runChapterBattle(state){const power=chapterEnemyPower(state.player.chapter),rating=chapterEnemyRating(state.player.chapter);return {...simulate(playerTeam(state),makeEnemyTeam(power,'元兵')),enemyPower:rating};}
+export function runTowerBattle(state){const floor=state.tower.highest+1,power=towerEnemyPower(floor),rating=towerEnemyRating(floor);return {...simulate(playerTeam(state),makeEnemyTeam(power,'守塔人')),enemyPower:rating,floor};}
 export function runAncientTombBattle(state,floor,power){return {...simulate(playerTeam(state),makeEnemyTeam(power,'古墓守卫')),enemyPower:power,floor};}

@@ -1,3 +1,5 @@
+import { towerPowerRating } from './power.js';
+
 export const SAVE_KEY = 'xinyitian_single_v1';
 export const SAVE_VERSION = 1;
 
@@ -93,7 +95,8 @@ export const HEROES = {
     id: 'huangshan', name: '黄衫女', rarity: 6, role: '单体斩首', unlock: 0,
     recruit: { type: 'vip8' },
     base: { atk: 390, def: 178, hp: 3180, speed: 119 },
-    skill: { name: '玉女素心剑法', target: 'highestAtk', multiplier: 3.2, rageCost: 4, refundOnKill: true },
+    skill: { name: '玉女素心剑法', target: 'highestAtk', multiplier: 3.2, flatDamage: 3600, rageCost: 4, refundOnKill: true },
+    passive: { firstRoundAbnormalImmune: true },
   },
   yangguo: {
     id: 'yangguo', name: '杨过', rarity: 6, role: '顶级输出', unlock: 110,
@@ -154,6 +157,15 @@ export function chapterEnemyPower(chapter) {
   return Math.round(1550 * Math.pow(1.075, chapter - 1));
 }
 
+export function chapterEnemyRating(chapter) {
+  return Math.round(chapterEnemyPower(chapter) * 10);
+}
+
+export function towerEnemyRating(floor) {
+  return towerPowerRating(floor);
+}
+
+// 战斗模拟仍用压缩后的内部强度；界面显示使用原版千宝塔战力锚点。
 export function towerEnemyPower(floor) {
-  return Math.round(2400 * Math.pow(1.0165, floor - 1));
+  return Math.max(2400, Math.round(towerEnemyRating(floor) / 7));
 }

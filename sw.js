@@ -1,4 +1,4 @@
-const CACHE = 'xinyitian-v0.10.0';
+const CACHE = 'xinyitian-v0.11.0';
 const ASSETS = [
   './',
   './index.html',
@@ -14,6 +14,7 @@ const ASSETS = [
   './src/awakening.js',
   './src/wudao.js',
   './src/tasks.js',
+  './src/power.js',
   './src/weapons.js',
   './src/app.js'
 ];

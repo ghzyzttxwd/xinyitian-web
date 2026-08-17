@@ -177,7 +177,7 @@ function applyThreeDuAfterSkill(actor,own,log){
   log.push(`${actor.name}结成【金刚伏魔圈】，己方全体获得1次直接伤害免疫。`);
 }
 
-function performOne(actor,own,enemies,log,round,forceSkill=false,forceNormal=false){
+function performOne(actor,own,enemies,log,round,forceSkill=false,forceNormal=false,noNormalRage=false){
   if(!actor.alive||!living(enemies).length)return {usedSkill:false,killed:false};
   const skill=actor.skill||{name:'绝技',target:'one',multiplier:1.5,rageCost:4};
   const useSkill=forceSkill || (!forceNormal&&actor.rage>=(skill.rageCost||4));
@@ -190,7 +190,7 @@ function performOne(actor,own,enemies,log,round,forceSkill=false,forceNormal=fal
     const rageBurst=effectOf(actor,'rageBurst'),cost=skill.rageCost||4;
     if(rageBurst){const spent=Math.max(cost,actor.rage),extra=Math.max(0,spent-4);skillMultiplier*=1+extra*rageBurst.bonusPerExtra;actor.rage=0;}
     else actor.rage-=cost;
-  }else if(Number(actor.statuses?.seal||0)<=0)actor.rage=Math.min(8,actor.rage+2);
+  }else if(!noNormalRage&&Number(actor.statuses?.seal||0)<=0)actor.rage=Math.min(8,actor.rage+2);
   let killed=false,total=0,misses=0,crits=0,guarded=0;
   const pierce=effectOf(actor,'ignoreDef');
   for(const target of targets){
@@ -234,7 +234,7 @@ function triggerAssists(acted,own,enemies,log,round){
     if(Math.random()>=Number(e.chance||0)||!living(enemies).length)continue;
     const canSkill=Number(e.skillAfterStacks||0)>0&&source.assistCount>=Number(e.skillAfterStacks||0)&&source.rage>=Number(source.skill?.rageCost||4);
     log.push(`${source.name}触发【追魂夺命剑】，协同${acted.name}出手。`);
-    performOne(source,own,enemies,log,round,canSkill,!canSkill);
+    performOne(source,own,enemies,log,round,canSkill,!canSkill,true);
     if(canSkill)source.assistCount=0;else{source.assistCount+=1;if(e.rageOnAssist)source.rage=Math.min(8,source.rage+Number(e.rageOnAssist||0));}
   }
 }

@@ -1,5 +1,6 @@
 import { HEROES, INITIAL_HERO_IDS, SAVE_KEY, SAVE_VERSION, VIP_THRESHOLDS, playerExpToNext } from './data.js';
 import { RED_KUNGFU, DIVINE_KUNGFU, equippedKungfuBonuses } from './kungfu.js';
+import { createInnerPowerHeroState, innerPowerBonuses, INNER_POWER_PER_MINUTE, advanceInnerPower } from './innerpower.js';
 
 function newHeroState(id) {
   return {
@@ -10,6 +11,7 @@ function newHeroState(id) {
     awakened: false,
     meridian: { progress: 0, atk: 0, def: 0, hp: 0, talent: 0 },
     kungfu: { equipped: [null,null,null,null,null,null,null,null] },
+    innerPower: createInnerPowerHeroState(),
   };
 }
 
@@ -19,6 +21,14 @@ function createKungfuState() {
   const divine = {};
   Object.keys(DIVINE_KUNGFU).forEach(id => { divine[id] = 0; });
   return { red, divine, scrolls: {}, drawCount: 0, fragments: 0 };
+}
+
+function createInnerPowerState(){
+  return {
+    rooms:[null,null,null,null,null,null,null],
+    lastTick:Date.now(),
+    items:{xingqi:0,yuling:0,wujue:0,lingqi:0,lingxian:0,juling:0,dingshen:0},
+  };
 }
 
 export function createInitialState() {
@@ -42,6 +52,7 @@ export function createInitialState() {
     tower: { highest: 0 },
     ancientTomb: { highest: 0, attemptsToday: 1 },
     kungfu: createKungfuState(),
+    innerPower:createInnerPowerState(),
     recharge: { firstDoubleUsed: {}, first6Claimed: false, vipGiftBought: {} },
     daily: { date: localDateKey(), staminaBuys: 0, moneyTreeUses: 0, quickBattles: 0 },
     specials: {
@@ -73,7 +84,7 @@ export function loadState() {
     if (!raw) return fresh;
     const parsed = JSON.parse(raw);
     const state = mergeDefaults(parsed, fresh);
-    normalizeDaily(state); recoverStamina(state); recalcVip(state);
+    normalizeDaily(state); recoverStamina(state); recoverInnerPower(state); recalcVip(state);
     return state;
   } catch (err) {
     console.warn('存档读取失败，使用新档', err);
@@ -98,6 +109,21 @@ export function recoverStamina(state) {
     state.player.stamina = Math.min(state.player.staminaCap, state.player.stamina + gained);
     state.player.lastStaminaAt = last + gained * 6 * 60 * 1000;
   }
+}
+
+export function recoverInnerPower(state){
+  if(!state.innerPower)return;
+  const now=Date.now(),last=Number(state.innerPower.lastTick||now);
+  const minutes=Math.floor((now-last)/60000);
+  if(minutes<=0)return;
+  for(const heroId of state.innerPower.rooms||[]){
+    if(!heroId||!state.heroes?.[heroId]?.owned)continue;
+    const ip=state.heroes[heroId].innerPower||(state.heroes[heroId].innerPower=createInnerPowerHeroState());
+    if(ip.year>=280)continue;
+    ip.power=Number(ip.power||0)+minutes*INNER_POWER_PER_MINUTE;
+    advanceInnerPower(ip);
+  }
+  state.innerPower.lastTick=last+minutes*60000;
 }
 
 export function recalcVip(state) {
@@ -134,19 +160,24 @@ export function heroStats(state, heroId) {
   if (!tpl || !h) return null;
   const growth = 1 + (Math.max(1, h.level) - 1) * 0.085;
   const meridian = h.meridian || {}, k = heroKungfuBonuses(state, heroId);
+  const ip = innerPowerBonuses(heroId,h.innerPower?.year||0,meridian.talent||0);
+  const rawAtk=tpl.base.atk*growth+Number(meridian.atk||0)+k.atk+ip.flatAtk;
+  const rawDef=tpl.base.def*growth+Number(meridian.def||0)+k.def+ip.flatDef;
+  const rawHp=tpl.base.hp*growth+Number(meridian.hp||0)+k.hp+ip.flatHp;
   return {
-    atk: Math.round(tpl.base.atk * growth + Number(meridian.atk || 0) + k.atk),
-    def: Math.round(tpl.base.def * growth + Number(meridian.def || 0) + k.def),
-    hp: Math.round(tpl.base.hp * growth + Number(meridian.hp || 0) + k.hp),
+    atk: Math.round(rawAtk*(1+ip.atkPct/100)),
+    def: Math.round(rawDef*(1+ip.defPct/100)),
+    hp: Math.round(rawHp*(1+ip.hpPct/100)),
     speed: tpl.base.speed + Math.floor((h.level - 1) / 10),
-    hit: k.hit, dodge: k.dodge, crit: k.crit, antiCrit: k.antiCrit,
+    hit: k.hit+ip.hit, dodge: k.dodge+ip.dodge, crit: k.crit+ip.crit, antiCrit: k.antiCrit+ip.antiCrit,
+    damageBonus:ip.damageBonus, damageReduction:ip.damageReduction, initialRage:ip.initialRage,
   };
 }
 
 export function heroPower(state, heroId) {
   const s = heroStats(state, heroId); if (!s) return 0;
   const k = heroKungfuBonuses(state, heroId);
-  return Math.round(s.atk*4.6 + s.def*3.5 + s.hp*.7 + s.speed*6 + (s.hit+s.dodge+s.crit+s.antiCrit)*1200 + k.power);
+  return Math.round(s.atk*4.6 + s.def*3.5 + s.hp*.7 + s.speed*6 + (s.hit+s.dodge+s.crit+s.antiCrit+s.damageBonus+s.damageReduction)*1200 + k.power);
 }
 
 export function totalPower(state) { return state.party.filter(Boolean).reduce((sum,id)=>sum+heroPower(state,id),0); }
@@ -164,7 +195,7 @@ export function exportSave(state) {
 export async function importSaveFile(file) {
   const text=await file.text(), parsed=JSON.parse(text);
   if (!parsed || typeof parsed!=='object' || !parsed.player) throw new Error('不是有效的新倚天存档');
-  const state=mergeDefaults(parsed,createInitialState()); normalizeDaily(state); recoverStamina(state); recalcVip(state); saveState(state); return state;
+  const state=mergeDefaults(parsed,createInitialState()); normalizeDaily(state); recoverStamina(state); recoverInnerPower(state); recalcVip(state); saveState(state); return state;
 }
 
 export function resetSave() { localStorage.removeItem(SAVE_KEY); return createInitialState(); }

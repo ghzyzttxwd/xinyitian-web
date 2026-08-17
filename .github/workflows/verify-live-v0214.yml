@@ -1,0 +1,55 @@
+name: Verify Live V0.21.4
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-live-v0214.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify public Pages files
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://ghzyzttxwd.github.io/xinyitian-web'
+          ok=0
+          for i in {1..24}; do
+            q="$GITHUB_RUN_ID-$i"
+            if curl -fsSL --connect-timeout 10 --max-time 30 "$base/src/app.js?v=$q" -o /tmp/app.js && \
+               curl -fsSL --connect-timeout 10 --max-time 30 "$base/src/state.js?v=$q" -o /tmp/state.js && \
+               curl -fsSL --connect-timeout 10 --max-time 30 "$base/src/battle.js?v=$q" -o /tmp/battle.js && \
+               curl -fsSL --connect-timeout 10 --max-time 30 "$base/styles.css?v=$q" -o /tmp/styles.css && \
+               curl -fsSL --connect-timeout 10 --max-time 30 "$base/sw.js?v=$q" -o /tmp/sw.js && \
+               grep -Fq 'showKungfuPicker' /tmp/app.js && \
+               grep -Fq 'data-choose-kungfu-slot' /tmp/app.js && \
+               grep -Fq 'data-modal-upgrade-kungfu' /tmp/app.js && \
+               grep -Fq 'initialRage:2+Number(ip.initialRage||0)' /tmp/state.js && \
+               grep -Fq 'actor.rage=Math.min(8,actor.rage+2)' /tmp/battle.js && \
+               grep -Fq '.kungfu-dialog' /tmp/styles.css && \
+               grep -Fq 'xinyitian-v0.21.4' /tmp/sw.js; then
+              ok=1
+              break
+            fi
+            sleep 5
+          done
+          test "$ok" -eq 1
+      - name: Remove verifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/verify-live-v0214.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'chore: remove V0.21.4 live verifier'
+          git push origin main

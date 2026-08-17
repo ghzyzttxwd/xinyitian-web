@@ -22,9 +22,11 @@ import {
   recalcVip,
 } from './state.js';
 import { runChapterBattle, runTowerBattle } from './battle.js';
+import { getMeridianPoint, kungfuSlotsForTalent, MERIDIAN_TOTAL_POINTS } from './meridians.js';
 
 let state = loadState();
 let currentPage = 'home';
+let selectedGrowthHero = 'player';
 
 const pageEl = document.querySelector('#page');
 const resourceBar = document.querySelector('#resourceBar');
@@ -151,12 +153,13 @@ function heroCard(id) {
   const inParty = state.party.includes(id);
   const unlockText = tpl.recruit?.type === 'vip8' ? 'VIP8礼包' : tpl.unlock ? `第${tpl.unlock}幕开放` : (id === 'xiaozhao' ? '首充6元' : '初始/活动');
   const s = owned ? heroStats(state,id) : null;
+  const talent = Number(h?.meridian?.talent || 0);
   return `<div class="hero-card ${owned ? '' : 'locked'}">
     <div class="hero-card-row">
       <div>
         <div class="hero-name rarity-${tpl.rarity}">${tpl.name} <span class="tag">${rarityName(tpl.rarity)}</span></div>
         <div class="hero-meta">${tpl.role} · ${owned ? `Lv.${h.level} · 战力 ${fmt(heroPower(state,id))}` : unlockText}</div>
-        ${s ? `<div class="hero-meta">攻 ${fmt(s.atk)} · 防 ${fmt(s.def)} · 血 ${fmt(s.hp)}</div>` : ''}
+        ${s ? `<div class="hero-meta">攻 ${fmt(s.atk)} · 防 ${fmt(s.def)} · 血 ${fmt(s.hp)} · 天赋 ${talent}</div>` : ''}
       </div>
       <div class="action-row">
         ${owned ? `<button class="btn" data-level-hero="${id}">升级</button><button class="btn ${inParty ? 'btn-gold' : ''}" data-toggle-party="${id}">${inParty ? '下阵' : '上阵'}</button>` : recruitStatusHtml(id)}
@@ -175,16 +178,81 @@ function renderHeroes() {
   });
   pageEl.innerHTML = `
     <div class="section-title"><h2>侠客</h2><small>${ids.filter(id=>state.heroes[id]?.owned).length}/${ids.length}</small></div>
-    <div class="notice">已接入侠客升级、上阵/下阵、传奇令定向招募。六人阵容可自由调整。</div>
+    <div class="notice">已接入侠客升级、上阵/下阵、传奇令定向招募与经脉属性。</div>
     <div class="hero-list" style="margin-top:10px">${ids.map(heroCard).join('')}</div>
   `;
 }
 
+function ensureGrowthHero() {
+  if (state.heroes[selectedGrowthHero]?.owned) return;
+  selectedGrowthHero = Object.keys(HEROES).find(id => state.heroes[id]?.owned) || 'player';
+}
+
+function meridianAttrText(point) {
+  const parts = [];
+  if (point.atk) parts.push(`攻击 +${fmt(point.atk)}`);
+  if (point.def) parts.push(`防御 +${fmt(point.def)}`);
+  if (point.hp) parts.push(`气血 +${fmt(point.hp)}`);
+  if (point.talent) parts.push(`天赋 +${fmt(point.talent)}`);
+  return parts.join(' · ') || '无属性';
+}
+
 function renderGrowth() {
+  ensureGrowthHero();
+  const ownedIds = Object.keys(HEROES).filter(id => state.heroes[id]?.owned);
+  const h = state.heroes[selectedGrowthHero];
+  const tpl = HEROES[selectedGrowthHero];
+  const m = h.meridian || { progress:0, atk:0, def:0, hp:0, talent:0 };
+  const done = Math.min(MERIDIAN_TOTAL_POINTS, Number(m.progress || 0));
+  const full = done >= MERIDIAN_TOTAL_POINTS;
+  const next = full ? null : getMeridianPoint(done);
+  const slots = kungfuSlotsForTalent(m.talent || 0);
+  const pct = Math.round(done / MERIDIAN_TOTAL_POINTS * 100);
+  const needLevel = next?.requiredLevel || 0;
+  const enoughLevel = !needLevel || state.player.level >= needLevel;
+  const enoughPills = next ? state.player.meridianPills >= next.meridianPills : false;
+  const enoughBreak = next ? state.player.breakthroughPills >= next.breakthroughPills : false;
+  const canOpen = !!next && enoughLevel && enoughPills && enoughBreak;
+
   pageEl.innerHTML = `
-    <div class="section-title"><h2>养成</h2><small>核心成长线</small></div>
+    <div class="section-title"><h2>养成</h2><small>经脉已接入</small></div>
+
+    <section class="card">
+      <div class="section-title"><h3>选择侠客</h3><small>${ownedIds.length}名已拥有</small></div>
+      <select id="growthHeroSelect" class="growth-select">
+        ${ownedIds.map(id => `<option value="${id}" ${id === selectedGrowthHero ? 'selected' : ''}>${HEROES[id].name} · Lv.${state.heroes[id].level}</option>`).join('')}
+      </select>
+    </section>
+
+    <section class="card">
+      <div class="section-title"><h3>${tpl.name} · 经脉</h3><small>${done}/${MERIDIAN_TOTAL_POINTS}穴</small></div>
+      <div class="progress"><i style="width:${pct}%"></i></div>
+      <div class="grid-2" style="margin-top:12px">
+        <div class="mini-stat"><div class="muted">经脉丹</div><div class="big-number small">${fmt(state.player.meridianPills)}</div></div>
+        <div class="mini-stat"><div class="muted">突破丹</div><div class="big-number small">${fmt(state.player.breakthroughPills)}</div></div>
+        <div class="mini-stat"><div class="muted">天赋</div><div class="big-number small">${fmt(m.talent || 0)}</div></div>
+        <div class="mini-stat"><div class="muted">功法槽</div><div class="big-number small">${slots}/8</div></div>
+      </div>
+      <div class="notice" style="margin-top:10px">累计经脉加成：攻击 +${fmt(m.atk || 0)} · 防御 +${fmt(m.def || 0)} · 气血 +${fmt(m.hp || 0)}</div>
+    </section>
+
+    ${full ? `
+      <section class="card"><div class="battle-win">十三经脉全部圆满</div><div class="muted" style="margin-top:8px">780个穴位已全部贯通。</div></section>
+    ` : `
+      <section class="card ${canOpen ? '' : 'locked'}">
+        <div class="section-title"><h3>${next.title}</h3><small>第${next.pointIndex + 1}/10穴</small></div>
+        <div class="hero-name">${next.isGate ? '命门突破' : `冲穴 · ${next.name}`}</div>
+        <div class="hero-meta" style="margin-top:6px">${meridianAttrText(next)}</div>
+        <div class="list-row" style="margin-top:10px"><span>经脉丹</span><b>${fmt(next.meridianPills)}</b></div>
+        ${next.breakthroughPills ? `<div class="list-row"><span>突破丹</span><b>${fmt(next.breakthroughPills)}</b></div>` : ''}
+        ${needLevel ? `<div class="list-row"><span>玩家等级</span><b>Lv.${needLevel}</b></div>` : ''}
+        <button class="btn ${next.isGate ? 'btn-gold' : 'btn-primary'} btn-block" data-action="meridian" ${canOpen ? '' : 'disabled'} style="margin-top:12px">${next.isGate ? '突破命门' : '冲穴'}</button>
+        ${!canOpen ? `<div class="hero-meta" style="margin-top:8px">${!enoughLevel ? `等级不足，需要Lv.${needLevel}` : !enoughPills ? '经脉丹不足，可继续挑战千宝塔' : '突破丹不足，可在千宝塔节点获得'}</div>` : ''}
+      </section>
+    `}
+
     <div class="grid-2">
-      ${['经脉','功法','内力','神兵','悟道'].map((name,i)=>`<div class="card"><div class="hero-name">${name}</div><div class="hero-meta">${i < 4 ? '下一阶段接入' : '神品后开放'}</div><button class="btn btn-block" disabled style="margin-top:10px">开发中</button></div>`).join('')}
+      ${['功法','内力','神兵','悟道'].map((name,i)=>`<div class="card locked"><div class="hero-name">${name}</div><div class="hero-meta">${i < 3 ? '后续里程碑接入' : '神品后开放'}</div><button class="btn btn-block" disabled style="margin-top:10px">开发中</button></div>`).join('')}
     </div>
   `;
 }
@@ -197,7 +265,7 @@ function renderChallenge() {
       <span class="tag">永久爬塔</span>
       <h3>少林千宝塔</h3>
       <div class="big-number">${state.tower.highest}层</div>
-      <div class="muted">下一层：${next}层。胜利获得经脉丹与铜钱。</div>
+      <div class="muted">下一层：${next}层。按原版层数曲线产出经脉丹，每50层稳定获得突破丹。</div>
       <button class="btn btn-primary btn-block" data-action="tower" style="margin-top:12px">挑战第${next}层</button>
     </section>
     <section class="card locked">
@@ -236,7 +304,10 @@ function renderInnCard() {
       <div class="mini-stat"><div class="muted">传奇招募令</div><div class="big-number small">${fmt(state.player.legendTokens)}</div></div>
     </div>
     <div class="notice" style="margin-top:10px">每次消耗10侠客信物兑换传奇招募令，保留原版多倍奖励，最高15倍。达到幕数后到“侠客”页定向招募。</div>
-    <button class="btn btn-primary btn-block" data-action="exchangeLegend" ${state.player.heroTokens < 10 ? 'disabled' : ''} style="margin-top:10px">10信物兑换传奇令</button>
+    <div class="action-row" style="margin-top:10px">
+      <button class="btn btn-primary" data-exchange-legend="1" ${state.player.heroTokens < 10 ? 'disabled' : ''}>兑换1次</button>
+      <button class="btn btn-gold" data-exchange-legend="10" ${state.player.heroTokens < 100 ? 'disabled' : ''}>连续10次</button>
+    </div>
   </section>`;
 }
 
@@ -307,8 +378,12 @@ function showBattle(result, title, rewardText = '') {
   battleDialog.showModal();
 }
 
+function hasParty() {
+  return state.party.some(id => id && state.heroes[id]?.owned);
+}
+
 function challengeChapter() {
-  if (!state.party.some(Boolean)) return alert('请至少上阵1名侠客。');
+  if (!hasParty()) return alert('当前没有上阵侠客。');
   const need = requiredPlayerLevelForChapter(state.player.chapter);
   if (state.player.level < need) {
     alert(`等级不足：第${state.player.chapter}幕需要 Lv.${need}。先速战获取经验。`);
@@ -342,17 +417,47 @@ function quickBattle() {
   alert(`速战完成：经验 +${fmt(exp)}，铜钱 +${fmt(copper)}。`);
 }
 
+function towerBaseMeridianPills(floor) {
+  if (floor <= 100) return 2;
+  if (floor <= 150) return 3;
+  if (floor <= 200) return 4;
+  if (floor <= 250) return 5;
+  if (floor <= 300) return 6;
+  if (floor <= 350) return 8;
+  return 10;
+}
+
+function towerMilestoneReward(floor) {
+  let meridian = 0;
+  let breakthrough = 0;
+  let mixedYiqi = 0;
+  if (floor === 3) meridian += 20;
+  if (floor % 10 === 0) {
+    const tier = Math.min(200, 10 * (Math.floor(floor / 100) + 1));
+    if (floor % 50 === 0) breakthrough += Math.min(100, tier);
+    else meridian += tier;
+  }
+  if (floor % 500 === 0) mixedYiqi = floor === 2500 ? 2 : 1;
+  return { meridian, breakthrough, mixedYiqi };
+}
+
 function challengeTower() {
-  if (!state.party.some(Boolean)) return alert('请至少上阵1名侠客。');
+  if (!hasParty()) return alert('当前没有上阵侠客。');
   const result = runTowerBattle(state);
   let reward = '';
   if (result.win) {
     state.tower.highest = result.floor;
-    const pills = result.floor <= 100 ? 2 : Math.min(10, 2 + Math.floor(result.floor / 50));
+    const basePills = towerBaseMeridianPills(result.floor);
+    const milestone = towerMilestoneReward(result.floor);
+    const pills = basePills + milestone.meridian;
     const copper = 8000 + result.floor * 1200;
     state.player.meridianPills += pills;
+    state.player.breakthroughPills += milestone.breakthrough;
+    state.player.mixedYiqiCopies = Number(state.player.mixedYiqiCopies || 0) + milestone.mixedYiqi;
     state.player.copper += copper;
     reward = `经脉丹 +${pills} · 铜钱 +${fmt(copper)}`;
+    if (milestone.breakthrough) reward += ` · 突破丹 +${milestone.breakthrough}`;
+    if (milestone.mixedYiqi) reward += ` · 混元一气功 +${milestone.mixedYiqi}`;
     commit();
   }
   showBattle(result, `少林千宝塔 · ${result.floor}层`, reward);
@@ -372,11 +477,9 @@ function levelHero(id) {
 function placeHeroIfPossible(id) {
   if (state.party.includes(id)) return true;
   const empty = state.party.findIndex(x => !x);
-  if (empty >= 0) {
-    state.party[empty] = id;
-    return true;
-  }
-  return false;
+  if (empty < 0) return false;
+  state.party[empty] = id;
+  return true;
 }
 
 function togglePartyHero(id) {
@@ -389,33 +492,8 @@ function togglePartyHero(id) {
     commit();
     return;
   }
-  const empty = state.party.findIndex(x => !x);
-  if (empty < 0) return alert('阵容已满6人，请先下阵一名侠客。');
-  state.party[empty] = id;
+  if (!placeHeroIfPossible(id)) return alert('阵容已满6人，请先下阵一名侠客。');
   commit();
-}
-
-function recruitHero(id) {
-  const tpl = HEROES[id];
-  const h = state.heroes[id];
-  if (!tpl || !h || h.owned) return;
-  if (state.player.chapter < (tpl.unlock || 0)) return alert(`需要推进到第${tpl.unlock}幕。`);
-  const recruit = tpl.recruit;
-  if (!recruit) return alert('该侠客目前不能在客栈招募。');
-  if (recruit.type === 'legendToken') {
-    if (state.player.legendTokens < recruit.cost) return alert(`传奇招募令不足，需要${recruit.cost}。`);
-    state.player.legendTokens -= recruit.cost;
-  } else if (recruit.type === 'special') {
-    const have = Number(state.specials?.[recruit.item] || 0);
-    if (have < recruit.cost) return alert(`${recruit.item}不足，需要${recruit.cost}。`);
-    state.specials[recruit.item] = have - recruit.cost;
-  } else {
-    return alert('该侠客通过其他方式获得。');
-  }
-  ownHero(state, id);
-  const placed = placeHeroIfPossible(id);
-  commit();
-  alert(`${tpl.name}招募成功${placed ? '，已自动加入空余阵位' : ''}。`);
 }
 
 function rollLegendMultiplier() {
@@ -427,26 +505,78 @@ function rollLegendMultiplier() {
   return 1;
 }
 
-function exchangeLegendTokens() {
-  if (state.player.heroTokens < 10) return alert('侠客信物不足，需要10个。');
-  state.player.heroTokens -= 10;
-  const multi = rollLegendMultiplier();
-  state.player.legendTokens += multi;
+function exchangeLegendTokens(times = 1) {
+  const count = Math.max(1, Math.min(100, Number(times) || 1));
+  const maxByTokens = Math.floor(state.player.heroTokens / 10);
+  const actual = Math.min(count, maxByTokens);
+  if (actual <= 0) return alert('侠客信物不足，每次需要10个。');
+  state.player.heroTokens -= actual * 10;
+  let gained = 0;
+  const details = [];
+  for (let i = 0; i < actual; i++) {
+    const multi = rollLegendMultiplier();
+    gained += multi;
+    details.push(`×${multi}`);
+  }
+  state.player.legendTokens += gained;
   commit();
-  alert(`客栈兑换成功：获得传奇招募令×${multi}${multi >= 10 ? '！大暴击！' : multi > 1 ? '！触发多倍奖励！' : '。'}`);
+  alert(`客栈兑换${actual}次：获得传奇招募令 ${gained} 个。\n倍率：${details.join('、')}`);
+}
+
+function recruitHero(id) {
+  const tpl = HEROES[id];
+  const h = state.heroes[id];
+  if (!tpl || !h || h.owned) return;
+  if (state.player.chapter < (tpl.unlock || 0)) return alert(`需要推进到第${tpl.unlock}幕。`);
+  const recruit = tpl.recruit;
+  if (!recruit) return alert('该侠客当前不是客栈招募侠客。');
+  if (recruit.type === 'legendToken') {
+    if (state.player.legendTokens < recruit.cost) return alert(`传奇招募令不足，需要${recruit.cost}。`);
+    state.player.legendTokens -= recruit.cost;
+  } else if (recruit.type === 'special') {
+    const have = Number(state.specials?.[recruit.item] || 0);
+    if (have < recruit.cost) return alert(`${recruit.item}不足，需要${recruit.cost}。`);
+    state.specials[recruit.item] = have - recruit.cost;
+  } else {
+    return alert('该侠客需要通过专属途径获得。');
+  }
+  ownHero(state, id);
+  placeHeroIfPossible(id);
+  commit();
+  alert(`${tpl.name}已加入侠客列表。`);
+}
+
+function unlockMeridianPoint() {
+  ensureGrowthHero();
+  const h = state.heroes[selectedGrowthHero];
+  if (!h?.owned) return;
+  const m = h.meridian || (h.meridian = { progress:0, atk:0, def:0, hp:0, talent:0 });
+  if (m.progress >= MERIDIAN_TOTAL_POINTS) return alert('该侠客十三经脉已经全部圆满。');
+  const point = getMeridianPoint(m.progress);
+  if (point.requiredLevel && state.player.level < point.requiredLevel) return alert(`等级不足，需要玩家Lv.${point.requiredLevel}。`);
+  if (state.player.meridianPills < point.meridianPills) return alert(`经脉丹不足，需要${point.meridianPills}。`);
+  if (state.player.breakthroughPills < point.breakthroughPills) return alert(`突破丹不足，需要${point.breakthroughPills}。`);
+  state.player.meridianPills -= point.meridianPills;
+  state.player.breakthroughPills -= point.breakthroughPills;
+  m.atk = Number(m.atk || 0) + point.atk;
+  m.def = Number(m.def || 0) + point.def;
+  m.hp = Number(m.hp || 0) + point.hp;
+  m.talent = Number(m.talent || 0) + point.talent;
+  m.progress = Number(m.progress || 0) + 1;
+  commit();
 }
 
 function recharge(yuan) {
   const pack = RECHARGE_PACKS.find(x => x.yuan === yuan);
   if (!pack) return;
   const first = !state.recharge.firstDoubleUsed[yuan];
-  const firstSixNow = yuan === 6 && !state.recharge.first6Claimed;
+  const first6 = yuan === 6 && !state.recharge.first6Claimed;
   const gained = first ? pack.gems * 2 : pack.gems + pack.repeatBonus;
   state.recharge.firstDoubleUsed[yuan] = true;
   state.player.totalRecharge += yuan;
   state.player.gems += gained;
 
-  if (firstSixNow) {
+  if (first6) {
     state.recharge.first6Claimed = true;
     state.player.gems += 60;
     ownHero(state, 'xiaozhao');
@@ -454,7 +584,7 @@ function recharge(yuan) {
   }
   recalcVip(state);
   commit();
-  alert(`模拟充值 ¥${yuan}：获得 ${fmt(gained)} 元宝${firstSixNow ? '；首充礼包额外60元宝，小昭已领取。' : '。'}`);
+  alert(`模拟充值 ¥${yuan}：获得 ${fmt(gained)} 元宝${first6 ? '。首充礼包额外60元宝，小昭已领取。' : '。'}`);
 }
 
 function buyStamina() {
@@ -512,6 +642,7 @@ async function onImport(file) {
   if (!file) return;
   try {
     state = await importSaveFile(file);
+    ensureGrowthHero();
     commit();
     alert('存档导入成功。');
   } catch (err) {
@@ -528,18 +659,26 @@ pageEl.addEventListener('click', e => {
   if (btn.dataset.levelHero) { levelHero(btn.dataset.levelHero); return; }
   if (btn.dataset.toggleParty) { togglePartyHero(btn.dataset.toggleParty); return; }
   if (btn.dataset.recruitHero) { recruitHero(btn.dataset.recruitHero); return; }
+  if (btn.dataset.exchangeLegend) { exchangeLegendTokens(Number(btn.dataset.exchangeLegend)); return; }
   if (btn.dataset.recharge) { recharge(Number(btn.dataset.recharge)); return; }
   const action = btn.dataset.action;
   if (action === 'chapter') challengeChapter();
   if (action === 'quick') quickBattle();
   if (action === 'tower') challengeTower();
-  if (action === 'exchangeLegend') exchangeLegendTokens();
+  if (action === 'meridian') unlockMeridianPoint();
   if (action === 'buyStamina') buyStamina();
   if (action === 'moneyTree') moneyTree();
   if (action === 'vip8gift') buyVip8Gift();
   if (action === 'export') exportSave(state);
   if (action === 'import') importInput.click();
-  if (action === 'reset' && confirm('确定清空本地存档并重新开始？')) { state = resetSave(); commit(); }
+  if (action === 'reset' && confirm('确定清空本地存档并重新开始？')) { state = resetSave(); selectedGrowthHero = 'player'; commit(); }
+});
+
+pageEl.addEventListener('change', e => {
+  if (e.target.id === 'growthHeroSelect') {
+    selectedGrowthHero = e.target.value;
+    renderGrowth();
+  }
 });
 
 document.querySelector('.bottom-nav').addEventListener('click', e => {

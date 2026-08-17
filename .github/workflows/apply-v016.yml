@@ -1,0 +1,30 @@
+name: Apply V0.16
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-v016.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 应用V0.16剧情成长补丁
+        run: python tools/v016_patch.py
+      - name: 检查脚本语法
+        run: |
+          node --check src/app.js
+          node --check src/state.js
+          node --check src/battle.js
+          node --check src/story.js
+          node --check src/wudao.js
+          node --check src/awakening.js
+          node --check src/weapons.js
+      - name: 提交V0.16
+        run: |
+          git config user.name "ghzyzttxwd"
+          git config user.email "2697941746@qq.com"
+          git add src index.html sw.js
+          git commit -m "V0.16 补齐主角与张无忌剧情成长"
+          git push

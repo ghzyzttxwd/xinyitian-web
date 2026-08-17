@@ -1,0 +1,66 @@
+name: V0.21.4 Mobile Regression 2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/v0214-browser-regression2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Static checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in src/*.js sw.js; do node --check "$f"; done
+          grep -Fq 'xinyitian-v0.21.4' sw.js
+      - name: Install Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/xyt-pw && cd /tmp/xyt-pw
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Run corrected mobile regression
+        shell: bash
+        run: |
+          set +e
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/xyt-http.log 2>&1 &
+          SERVER_PID=$!
+          echo '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' | base64 -d | gunzip > /tmp/xyt-pw/test.cjs
+          cd /tmp/xyt-pw
+          node test.cjs >/tmp/v0214-test.log 2>&1
+          STATUS=$?
+          kill $SERVER_PID >/dev/null 2>&1 || true
+          echo "$STATUS" >/tmp/v0214-status
+          exit 0
+      - name: Record result and clean workflow
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          STATUS=$(cat /tmp/v0214-status 2>/dev/null || echo 99)
+          rm -f .github/workflows/v0214-browser-regression2.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if [ "$STATUS" = "0" ]; then
+            rm -f docs/v0214-regression-failure.txt
+            git add -A
+            git commit -m 'test: V0.21.4 mobile regression passed'
+          else
+            mkdir -p docs
+            { echo "V0.21.4 regression exit=$STATUS"; tail -c 12000 /tmp/v0214-test.log 2>/dev/null || true; } > docs/v0214-regression-failure.txt
+            git add -A
+            git commit -m 'test: capture V0.21.4 regression failure 2'
+          fi
+          git push origin main

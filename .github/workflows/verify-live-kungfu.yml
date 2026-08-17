@@ -1,0 +1,48 @@
+name: Verify Live Kungfu Hotfix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-live-kungfu.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify public GitHub Pages output
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://ghzyzttxwd.github.io/xinyitian-web'
+          for i in {1..12}; do
+            if curl -fsSL --connect-timeout 10 --max-time 30 "$base/src/app.js?verify=$GITHUB_RUN_ID-$i" -o /tmp/live-app.js && \
+               curl -fsSL --connect-timeout 10 --max-time 30 "$base/sw.js?verify=$GITHUB_RUN_ID-$i" -o /tmp/live-sw.js && \
+               grep -q 'heroTalent(state,selectedGrowthHero)),eq=h.kungfu' /tmp/live-app.js && \
+               grep -q 'slots=kungfuSlotsForTalent(heroTalent(state,selectedGrowthHero));' /tmp/live-app.js && \
+               grep -q 'function firstOpenKungfuSlot(heroId).*heroTalent(state,heroId)' /tmp/live-app.js && \
+               grep -q "xinyitian-v0.20.1" /tmp/live-sw.js; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'Live Pages output did not match the fixed build.' >&2
+          exit 1
+
+      - name: Remove verification workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/verify-live-kungfu.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: remove live hotfix verifier"
+          git push origin main

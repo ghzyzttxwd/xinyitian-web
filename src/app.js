@@ -113,7 +113,7 @@ function redKungfuRecord(id){return state.kungfu?.red?.[id]||{level:0,copies:0};
 function kungfuUsedBy(ref){for(const [heroId,h] of Object.entries(state.heroes)){const idx=h?.kungfu?.equipped?.indexOf(ref)??-1;if(idx>=0)return {heroId,index:idx};}return null;}
 function kungfuNameFromRef(ref){if(!ref)return '空';if(String(ref).startsWith('god:'))return DIVINE_KUNGFU[String(ref).slice(4)]?.name||'神功';return RED_KUNGFU[ref]?.name||'功法';}
 function kungfuEquipSlotsHtml(){
- const h=state.heroes[selectedGrowthHero],slots=kungfuSlotsForTalent(heroTalent(state,heroId)),eq=h.kungfu?.equipped||[];
+ const h=state.heroes[selectedGrowthHero],slots=kungfuSlotsForTalent(heroTalent(state,selectedGrowthHero)),eq=h.kungfu?.equipped||[];
  return `<div class="kungfu-slots">${Array.from({length:8},(_,i)=>{const ref=eq[i],locked=i>=slots;return `<div class="kungfu-slot ${locked?'locked':''}"><div class="muted">第${i+1}槽${locked?' · 未解锁':''}</div><div class="hero-name">${locked?'—':kungfuNameFromRef(ref)}</div>${ref&&!locked?`<button class="btn btn-ghost btn-block" data-unequip-slot="${i}" style="margin-top:6px">卸下</button>`:''}</div>`;}).join('')}</div>`;
 }
 function redKungfuCards(){
@@ -125,7 +125,7 @@ function divineCards(){
  return `<div class="hero-card ${owned?'':'locked'}"><div class="hero-card-row"><div><div class="hero-name rarity-7">${k.name}</div><div class="hero-meta">${k.desc}</div><div class="hero-meta">融合：${requirements}</div></div><div class="action-stack">${owned?`<button class="btn btn-gold" data-equip-divine="${k.id}" ${used?'disabled':''}>${used?'已装备':'装备'}</button>`:`<button class="btn btn-gold" data-fuse-divine="${k.id}" ${ready?'':'disabled'}>融合</button>`}</div></div></div>`;}).join('');
 }
 function renderKungfuPanel(){
- const h=state.heroes[selectedGrowthHero],slots=kungfuSlotsForTalent(heroTalent(state,heroId));
+ const h=state.heroes[selectedGrowthHero],slots=kungfuSlotsForTalent(heroTalent(state,selectedGrowthHero));
  return `<section class="card"><div class="section-title"><h3>${HEROES[selectedGrowthHero].name} · 功法</h3><small>${slots}/8槽</small></div>${kungfuEquipSlotsHtml()}<div class="notice" style="margin-top:10px">功法槽由经脉天赋开启：220天赋一次开启前三槽，之后280/340/400/460/520依次开启。</div></section>
  <section class="card"><div class="section-title"><h3>藏经阁</h3><small>元宝直接抽取</small></div><div class="notice">300元宝抽1次，1500元宝抽5次。红色功法概率按当前原版元宝抽取的2%处理；低品质结果暂折算为功法残页。</div><div class="action-row" style="margin-top:10px"><button class="btn" data-action="drawKungfu1" ${state.player.gems<300?'disabled':''}>抽1次 · 300元宝</button><button class="btn btn-gold" data-action="drawKungfu5" ${state.player.gems<1500?'disabled':''}>抽5次 · 1500元宝</button></div><div class="hero-meta" style="margin-top:8px">累计抽取 ${fmt(state.kungfu?.drawCount||0)} 次 · 功法残页 ${fmt(state.kungfu?.fragments||0)}</div></section>
  <div class="section-title"><h3>红色功法</h3><small>25门</small></div><div class="hero-list">${redKungfuCards()}</div>

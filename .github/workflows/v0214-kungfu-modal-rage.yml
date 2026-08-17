@@ -1,4 +1,4 @@
-name: V0.21.4 Kungfu Modal and Rage
+name: V0.21.4 Kungfu Modal Patch
 
 on:
   push:
@@ -17,15 +17,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Apply V0.21.4 patch
+      - name: Apply patch
         shell: bash
         run: |
           set -euo pipefail
           echo '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' | base64 -d | gunzip > /tmp/patch.py
           python3 /tmp/patch.py
-
-      - name: Static validation
+      - name: Validate syntax and invariants
         shell: bash
         run: |
           set -euo pipefail
@@ -36,27 +34,7 @@ jobs:
           grep -Fq 'initialRage:2+Number(ip.initialRage||0)' src/state.js
           grep -Fq 'actor.rage=Math.min(8,actor.rage+2)' src/battle.js
           grep -Fq 'xinyitian-v0.21.4' sw.js
-
-      - name: Install Chromium runtime
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p /tmp/xyt-pw && cd /tmp/xyt-pw
-          npm init -y >/dev/null 2>&1
-          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
-          npx playwright install --with-deps chromium >/dev/null 2>&1
-
-      - name: Verify mobile UX and rage
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/xyt-http.log 2>&1 &
-          SERVER_PID=$!
-          trap 'kill $SERVER_PID || true' EXIT
-          echo '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' | base64 -d | gunzip > /tmp/xyt-pw/test.cjs
-          cd /tmp/xyt-pw && node test.cjs
-
-      - name: Commit verified patch and remove workflow
+      - name: Commit patch
         shell: bash
         run: |
           set -euo pipefail

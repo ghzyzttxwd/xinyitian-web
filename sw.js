@@ -1,9 +1,10 @@
-const CACHE = 'xinyitian-v0.21.5';
+const CACHE = 'xinyitian-v0.21.6';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
   './scenes.css',
+  './jianghu-nav.css',
   './assets/original/hero-bg.jpg',
   './assets/original/jianghu-bg.jpg',
   './assets/original/icon-gems.png',
@@ -30,7 +31,8 @@ const ASSETS = [
   './src/power.js',
   './src/vip.js',
   './src/weapons.js',
-  './src/app.js'
+  './src/app.js',
+  './src/jianghu-nav.js'
 ];
 
 self.addEventListener('install', event => {

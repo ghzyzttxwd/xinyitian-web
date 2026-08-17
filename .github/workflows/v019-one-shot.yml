@@ -1,0 +1,52 @@
+name: V0.19 One-shot UI and Talent
+
+on:
+  push:
+    paths:
+      - '.github/workflows/v019-one-shot.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check patch script
+        run: python -m py_compile scripts/v019_patch.py
+
+      - name: Apply V0.19 patch
+        run: python scripts/v019_patch.py
+
+      - name: Syntax check
+        run: |
+          node --check src/app.js
+          node --check src/state.js
+          node --check src/meridians.js
+          node --check sw.js
+
+      - name: Targeted verification
+        run: |
+          grep -n "BASE_TALENT_BY_RARITY" src/meridians.js
+          grep -n "heroTalent(state,selectedGrowthHero)" src/app.js
+          grep -n "innerPowerBonuses(heroId,h.innerPower,heroTalent(state,heroId))" src/state.js
+          grep -n "hub-grid" src/app.js
+          grep -n "V0.19" index.html
+
+      - name: Remove temporary patch files
+        run: |
+          rm -f scripts/v019_patch.py
+          rm -f .github/workflows/v019-one-shot.yml
+
+      - name: Commit V0.19
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: redesign V0.19 UI and fix base talent"
+          git push origin main

@@ -1,0 +1,29 @@
+name: Apply V0.10
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-v010.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 应用每日与成长任务补丁
+        run: python tools/v010_patch.py
+      - name: 检查脚本语法
+        run: |
+          node --check src/app.js
+          node --check src/state.js
+          node --check src/tasks.js
+          node --check src/wudao.js
+          node --check src/awakening.js
+          node --check src/ancienttomb.js
+      - name: 提交V0.10
+        run: |
+          git config user.name "ghzyzttxwd"
+          git config user.email "2697941746@qq.com"
+          git add src index.html sw.js
+          git commit -m "V0.10 每日与成长任务可玩版"
+          git push

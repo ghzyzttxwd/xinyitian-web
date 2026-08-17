@@ -77,6 +77,7 @@ export function rollAncientTombReward(floor,{firstClear=false}={}){
     calmingPills:firstClear&&f%10===0?1:0,
     speedTickets:firstClear?1:0,
     yuanyangCopies:firstClear?Number(YUANYANG_FIRST_REWARDS[f]||0):0,
+    soulChoicePacks:firstClear&&f%100===0?1:0,
   };
 }
 

@@ -3,6 +3,7 @@ import { RED_KUNGFU, DIVINE_KUNGFU, equippedKungfuBonuses } from './kungfu.js';
 import { createInnerPowerHeroState, innerPowerBonuses, INNER_POWER_PER_MINUTE, advanceInnerPower } from './innerpower.js';
 import { createWeaponState, equippedWeaponBonuses } from './weapons.js';
 import { createAncientTombState, ANCIENT_TOMB_DAILY_ATTEMPTS } from './ancienttomb.js';
+import { createAwakeningState, awakeningBaseMultiplier } from './awakening.js';
 
 function newHeroState(id) {
   return {
@@ -57,6 +58,7 @@ export function createInitialState() {
     kungfu: createKungfuState(),
     innerPower:createInnerPowerState(),
     weapons:createWeaponState(),
+    awakening:createAwakeningState(),
     recharge: { firstDoubleUsed: {}, first6Claimed: false, vipGiftBought: {} },
     daily: { date: localDateKey(), staminaBuys: 0, moneyTreeUses: 0, quickBattles: 0 },
     specials: {
@@ -163,16 +165,16 @@ export function heroStats(state, heroId) {
   const tpl = HEROES[heroId], h = state.heroes[heroId];
   if (!tpl || !h) return null;
   const growth = 1 + (Math.max(1, h.level) - 1) * 0.085;
-  const meridian = h.meridian || {}, k = heroKungfuBonuses(state, heroId), w=equippedWeaponBonuses(state,heroId);
+  const meridian = h.meridian || {}, k = heroKungfuBonuses(state, heroId), w=equippedWeaponBonuses(state,heroId), a=awakeningBaseMultiplier(state,heroId);
   const ip = innerPowerBonuses(heroId,h.innerPower?.year||0,meridian.talent||0);
-  const rawAtk=tpl.base.atk*growth+Number(meridian.atk||0)+k.atk+ip.flatAtk+w.atk;
-  const rawDef=tpl.base.def*growth+Number(meridian.def||0)+k.def+ip.flatDef+w.def;
-  const rawHp=tpl.base.hp*growth+Number(meridian.hp||0)+k.hp+ip.flatHp+w.hp;
+  const rawAtk=tpl.base.atk*a.atk*growth+Number(meridian.atk||0)+k.atk+ip.flatAtk+w.atk;
+  const rawDef=tpl.base.def*a.def*growth+Number(meridian.def||0)+k.def+ip.flatDef+w.def;
+  const rawHp=tpl.base.hp*a.hp*growth+Number(meridian.hp||0)+k.hp+ip.flatHp+w.hp;
   return {
     atk: Math.round(rawAtk*(1+ip.atkPct/100)),
     def: Math.round(rawDef*(1+ip.defPct/100)),
     hp: Math.round(rawHp*(1+ip.hpPct/100)),
-    speed: tpl.base.speed + Math.floor((h.level - 1) / 10),
+    speed: tpl.base.speed + Number(a.speed||0) + Math.floor((h.level - 1) / 10),
     hit: k.hit+ip.hit, dodge: k.dodge+ip.dodge, crit: k.crit+ip.crit, antiCrit: k.antiCrit+ip.antiCrit,
     damageBonus:ip.damageBonus, damageReduction:ip.damageReduction, initialRage:ip.initialRage,
   };

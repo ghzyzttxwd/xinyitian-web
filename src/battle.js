@@ -5,6 +5,7 @@ import { weaponBattleEffects } from './weapons.js';
 import { effectiveHeroProfile, awakeningBattleEffects } from './awakening.js';
 import { applyWudaoProfile, wudaoBattleEffects } from './wudao.js';
 import { storyHeroProfile, storyBattleEffects } from './story.js';
+import { innerPowerBattleEffects } from './innerpower.js';
 
 const CONTROL_TYPES=['stun','silence','seal'];
 const CONTROL_NAMES={stun:'眩晕',silence:'沉默',seal:'封穴'};
@@ -28,6 +29,7 @@ function effectsForHero(state, heroId) {
   out.push(...awakeningBattleEffects(state,heroId));
   out.push(...wudaoBattleEffects(state,heroId));
   out.push(...storyBattleEffects(state,heroId));
+  out.push(...innerPowerBattleEffects(heroId,h?.innerPower?.year||0));
   return out;
 }
 
@@ -42,7 +44,7 @@ function cloneFighter(base) {
     statuses:{stun:0,silence:0,seal:0}, buddha:0, vajraGuard:0, controlDamageBonus:0,
     rageTransferUsed:0, guardStacks:0, hitsTaken:0, damageImmuneCharges:0, damageImmuneThroughRound:0,
     actedThisRound:false, firstHitTakenThisRound:false, yinYangAtk:0, yinYangDef:0,
-    lethalReverseUsed:0, lowHpTriggered:0, nextSkillBonus:0, assistCount:0, assistSeen:{},
+    lethalReverseUsed:0, lowHpTriggered:0, nextSkillBonus:0, innerNextDamageBonus:0, innerReactionRound:{}, assistCount:0, assistSeen:{},
     attackDownPct:0, attackDownTurns:0, abnormalImmuneThroughRound:base.passive?.firstRoundAbnormalImmune?1:0 };
 }
 
@@ -81,13 +83,13 @@ function damage(attacker,target,multiplier=1,ignoreDef=0){
   if(Math.random()>hitChance)return {amount:0,miss:true,crit:false};
   const atkNow=attacker.atk*(1-Number(attacker.attackDownPct||0)),effectiveDef=target.def*(1-ignoreDef), base=Math.max(atkNow*.28,atkNow-effectiveDef*.56), variance=.92+Math.random()*.16;
   const critChance=Math.max(0,Math.min(.75,.05+Number(attacker.crit||0)/100-Number(target.antiCrit||0)/100));
-  const crit=Math.random()<critChance;
+  const crit=Math.random()<critChance,critMul=Math.max(1.05,1.5+Number(attacker.critDamage||0)/100-Number(target.critDamageReduction||0)/100);
   const bonus=1+Number(attacker.damageBonus||0)/100+Number(attacker.controlDamageBonus||0),reflect=effectOf(target,'reflect'),flatDR=effectOf(target,'damageReduction');
   const turnGuard=effectOf(target,'turnGuard'),stackGuard=effectOf(target,'stackDRonHit');
   let extraDR=Number(stackGuard?.perHit||0)*Math.min(Number(target.guardStacks||0),Number(stackGuard?.maxStacks||0));
   if(turnGuard){extraDR+=target.actedThisRound?Number(turnGuard.afterActionDR||0):Number(turnGuard.beforeActionDR||0);if(target.actedThisRound&&!target.firstHitTakenThisRound)extraDR+=Number(turnGuard.firstHitReduction||0);}
   const reduction=Math.max(.08,1-Number(target.damageReduction||0)/100-Number(reflect?.damageReduction||0)-Number(flatDR?.value||0)/100-extraDR);
-  return {amount:Math.max(1,Math.round(base*multiplier*variance*(crit?1.5:1)*bonus*reduction)),miss:false,crit};
+  return {amount:Math.max(1,Math.round(base*multiplier*variance*(crit?critMul:1)*bonus*reduction)),miss:false,crit};
 }
 
 function addBuddha(target,amount,log){
@@ -96,11 +98,11 @@ function addBuddha(target,amount,log){
   if(after>before)log.push(`${target.name}佛性 ${before}→${after}层（行动失败率${after*10}%）。`);
 }
 
-function applyAbnormal(target,type,duration,round,log,source=''){ 
+function applyAbnormal(target,type,duration,round,log,source='',targetTeam=[]){ 
   if(!CONTROL_TYPES.includes(type)||!target.alive)return false;
   if(Number(target.abnormalImmuneThroughRound||0)>=round){log.push(`${target.name}免疫${CONTROL_NAMES[type]}${source?`（${source}）`:''}。`);return false;}
   target.statuses[type]=Math.max(Number(target.statuses[type]||0),Math.max(1,Number(duration)||1));
-  log.push(`${target.name}陷入【${CONTROL_NAMES[type]}】${target.statuses[type]}次行动。`);return true;
+  log.push(`${target.name}陷入【${CONTROL_NAMES[type]}】${target.statuses[type]}次行动。`);triggerInnerReaction(target,'abnormal',targetTeam,round,log);return true;
 }
 
 function tickControls(actor){for(const k of CONTROL_TYPES)if(Number(actor.statuses?.[k]||0)>0)actor.statuses[k]-=1;actor.controlDamageBonus=0;}
@@ -140,6 +142,18 @@ function applyDamage(target,amount,log){
   if(left>0)target.hpNow-=left;
   if(target.hpNow<=0){target.hpNow=0;target.alive=false;tryRevive(target,log);}
 }
+function triggerInnerReaction(target,event,team,round,log){
+  if(!target?.alive)return;
+  for(const e of (target.effects||[]).filter(x=>x.kind==='innerReaction'&&x.event===event)){
+    const key=`${event}:${e.label||''}`;if(e.oncePerRound&&target.innerReactionRound?.[key]===round)continue;
+    target.innerReactionRound=target.innerReactionRound||{};target.innerReactionRound[key]=round;
+    if(e.mode==='nextDamage'){target.innerNextDamageBonus=Math.max(Number(target.innerNextDamageBonus||0),Number(e.value||0));log.push(`${target.name}触发【${e.label}】，下次出手伤害提高${Math.round(Number(e.value||0)*100)}%。`);}
+    else if(e.mode==='heal'){const allies=living(team).filter(x=>x.alive);if(allies.length){const ally=[...allies].sort((a,b)=>a.hpNow/a.hp-b.hpNow/b.hp)[0],heal=Math.max(1,Math.round(ally.hp*Number(e.value||0)));ally.hpNow=Math.min(ally.hp,ally.hpNow+heal);log.push(`${target.name}触发【${e.label}】，为${ally.name}恢复 ${heal.toLocaleString()} 气血。`);}}
+    else if(e.mode==='shield'){const shield=Math.max(1,Math.round(target.hp*Number(e.value||0)));target.shield+=shield;log.push(`${target.name}触发【${e.label}】，获得 ${shield.toLocaleString()} 护盾。`);}
+  }
+}
+function triggerInnerBuff(target,team,round,log){triggerInnerReaction(target,'buff',team,round,log);}
+
 function tryVajraGuard(attacker,target,log){
   if(Number(target.vajraGuard||0)<=0)return false;
   target.vajraGuard-=1;addBuddha(attacker,1,log);
@@ -157,16 +171,16 @@ function applyYinYangRound(f,round){if(f.yinYangAtk){f.atk-=f.yinYangAtk;f.yinYa
 function triggerDeathCurse(dead,foes,round,log){const e=effectOf(dead,'deathCurse');if(!e||dead.alive||dead.deathCurseUsed)return;dead.deathCurseUsed=1;const targets=[...living(foes)].sort((a,b)=>b.atk-a.atk).slice(0,Number(e.targets||1));for(const t of targets){const loss=Math.min(t.hpNow,Math.round(t.hp*Number(e.hpRatio||0)+Number(e.flat||0)));t.hpNow-=loss;if(t.hpNow<=0){t.hpNow=0;t.alive=false;}if(e.atkDown){t.attackDownPct=Math.max(Number(t.attackDownPct||0),Number(e.atkDown||0));t.attackDownTurns=Math.max(Number(t.attackDownTurns||0),Number(e.duration||2));}}if(targets.length)log.push(`${dead.name}触发【天地同寿】，反噬${targets.map(x=>x.name).join('、')}。`);}
 
 function healTeam(team,source,ratio,log){if(!ratio)return;for(const ally of living(team)){const heal=Math.round(source.atk*ratio*healReceivedMul(ally));ally.hpNow=Math.min(ally.hp,ally.hpNow+heal);}log.push(`${source.name}为全队恢复气血。`);}
-function teamRage(team,amount,source,log){if(!amount)return;for(const ally of living(team))ally.rage=Math.min(8,ally.rage+amount);log.push(`${source.name}令己方全体怒气 +${amount}。`);}
-function shieldAfterAction(actor,own,log){
+function teamRage(team,amount,source,log,round){if(!amount)return;for(const ally of living(team)){ally.rage=Math.min(8,ally.rage+amount);triggerInnerBuff(ally,team,round,log);}log.push(`${source.name}令己方全体怒气 +${amount}。`);}
+function shieldAfterAction(actor,own,log,round){
   const e=effectOf(actor,'shieldAfterAction'); if(!e||Math.random()>=e.chance)return;
-  actor.shield+=Math.round(actor.hp*e.ratio);log.push(`${actor.name}触发【九阳真经】，获得${Math.round(e.ratio*100)}%最大气血护盾。`);
-  if(e.ally){const allies=living(own).filter(x=>x!==actor);if(allies.length){const ally=allies[Math.floor(Math.random()*allies.length)];ally.shield+=Math.round(ally.hp*e.ratio);log.push(`${ally.name}同时获得九阳护盾。`);}}
+  actor.shield+=Math.round(actor.hp*e.ratio);triggerInnerBuff(actor,own,round,log);log.push(`${actor.name}触发【九阳真经】，获得${Math.round(e.ratio*100)}%最大气血护盾。`);
+  if(e.ally){const allies=living(own).filter(x=>x!==actor);if(allies.length){const ally=allies[Math.floor(Math.random()*allies.length)];ally.shield+=Math.round(ally.hp*e.ratio);triggerInnerBuff(ally,own,round,log);log.push(`${ally.name}同时获得九阳护盾。`);}}
 }
 
-function applySkillAbnormals(actor,targets,action,round,log){
+function applySkillAbnormals(actor,targets,targetTeam,action,round,log){
   if(!Array.isArray(action.abnormal))return;
-  for(const target of targets)for(const a of action.abnormal){if(target.alive&&Math.random()<Number(a.chance||0))applyAbnormal(target,a.type,a.duration,round,log,actor.name);}
+  for(const target of targets)for(const a of action.abnormal){if(target.alive&&Math.random()<Number(a.chance||0))applyAbnormal(target,a.type,a.duration,round,log,actor.name,targetTeam);}
 }
 
 function applyThreeDuAfterHit(actor,target,useSkill,own,log){
@@ -187,6 +201,7 @@ function performOne(actor,own,enemies,log,round,forceSkill=false,forceNormal=fal
   const targets=pickTargets(action,enemies); if(!targets.length)return {usedSkill:false,killed:false};
   let skillMultiplier=action.multiplier||1;
   if(useSkill&&actor.nextSkillBonus){skillMultiplier*=1+Number(actor.nextSkillBonus||0);actor.nextSkillBonus=0;}
+  if(actor.innerNextDamageBonus){skillMultiplier*=1+Number(actor.innerNextDamageBonus||0);actor.innerNextDamageBonus=0;}
   if(useSkill){const e=effectOf(actor,'skillDamage');if(e)skillMultiplier*=1+e.value;}
   if(useSkill){
     const rageBurst=effectOf(actor,'rageBurst'),cost=skill.rageCost||4;
@@ -199,9 +214,9 @@ function performOne(actor,own,enemies,log,round,forceSkill=false,forceNormal=fal
     let targetMul=skillMultiplier;
     const missing=effectOf(actor,'missingHpDamage');if(missing){const steps=Math.floor(Math.max(0,1-target.hpNow/target.hp)*10);targetMul*=1+steps*Number(missing.bonusPer10||0);}
     if(useSkill&&actor.combat?.buddhaSkillBonusPerStack&&circleActive(own))targetMul*=1+Number(target.buddha||0)*Number(actor.combat.buddhaSkillBonusPerStack||0);
-    const hit=damage(actor,target,targetMul,(action.ignoreDef||0)+Number(pierce?.value||0));if(hit.miss){misses++;continue;}
+    const hit=damage(actor,target,targetMul,(action.ignoreDef||0)+Number(pierce?.value||0));if(hit.miss){misses++;triggerInnerReaction(target,'dodge',enemies,round,log);continue;}
     if(tryVajraGuard(actor,target,log)||tryDamageImmunity(target,round,log)){guarded++;continue;}
-    const wasAlive=target.alive,flat=useSkill?Number(action.flatDamage||0):0;let amount=hit.amount+flat;amount=adjustBigHit(target,amount,log);applyDamage(target,amount,log);total+=amount;if(amount>0)afterDirectHit(target,log);if(hit.crit)crits++;
+    const wasAlive=target.alive,flat=useSkill?Number(action.flatDamage||0):0;let amount=hit.amount+flat;amount=adjustBigHit(target,amount,log);applyDamage(target,amount,log);total+=amount;if(amount>0)afterDirectHit(target,log);if(hit.crit){crits++;if(target.alive)triggerInnerReaction(target,'critTaken',enemies,round,log);}
     applyThreeDuAfterHit(actor,target,useSkill,own,log);
     const execute=effectOf(actor,'execute');if(target.alive&&execute&&target.hpNow/target.hp<=execute.threshold&&Math.random()<execute.chance){log.push(`${actor.name}的【屠龙刀】触发斩杀！`);applyDamage(target,target.hpNow,log);}
     const reflect=effectOf(target,'reflect');if(reflect&&actor.alive){const back=Math.round(amount*reflect.ratio);if(back>0){applyDamage(actor,back,log);log.push(`${target.name}的【金丝软猬甲】反震 ${back.toLocaleString()} 伤害。`);}}
@@ -211,20 +226,20 @@ function performOne(actor,own,enemies,log,round,forceSkill=false,forceNormal=fal
     if(wasAlive&&!target.alive)killed=true;
   }
   if(!useSkill){const splash=effectOf(actor,'splashAdjacent');if(splash&&Math.random()<Number(splash.chance||0)){const others=living(enemies).filter(x=>!targets.includes(x));if(others.length){const t=others[Math.floor(Math.random()*others.length)],h=damage(actor,t,Number(splash.ratio||0),0);if(!h.miss&&!tryVajraGuard(actor,t,log)&&!tryDamageImmunity(t,round,log)){let a=adjustBigHit(t,h.amount,log);applyDamage(t,a,log);if(a>0)afterDirectHit(t,log);total+=a;log.push(`${actor.name}触发【白蟒鞭法】，波及${t.name} ${a.toLocaleString()}伤害。`);if(!t.alive)triggerDeathCurse(t,own,round,log);}}}}
-  if(useSkill)applySkillAbnormals(actor,targets,action,round,log);
+  if(useSkill)applySkillAbnormals(actor,targets,enemies,action,round,log);
   log.push(`${actor.name}${useSkill?`施展【${action.name}】`:'普通攻击'}，造成 ${total.toLocaleString()} 伤害${crits?'，触发暴击':''}${misses?`，${misses}次闪避`:''}${guarded?`，${guarded}次被护盾挡下`:''}。${killed?' 有敌人倒下！':''}`);
   if(useSkill&&skill.refundOnKill&&killed)actor.rage+=skill.rageCost||4;
   const steal=effectOf(actor,'lifesteal');if(steal&&total>0&&actor.alive){const heal=Math.round(total*steal.ratio);actor.hpNow=Math.min(actor.hp,actor.hpNow+heal);log.push(`${actor.name}凭【${steal.label||'玄铁指环'}】吸血 ${heal.toLocaleString()}。`);}
   if(useSkill){
     applyThreeDuAfterSkill(actor,own,log);
-    teamRage(own,skill.teamRage||0,actor,log);healTeam(own,actor,skill.healTeam||0,log);
-    const rageFloor=effectOf(actor,'rageFloorAfterSkill');if(rageFloor){for(const ally of living(own))ally.rage=Math.max(ally.rage,rageFloor.value);log.push(`${actor.name}悟道令己方低怒侠客补至${rageFloor.value}怒。`);}
+    teamRage(own,skill.teamRage||0,actor,log,round);healTeam(own,actor,skill.healTeam||0,log);
+    const rageFloor=effectOf(actor,'rageFloorAfterSkill');if(rageFloor){for(const ally of living(own)){const before=ally.rage;ally.rage=Math.max(ally.rage,rageFloor.value);if(ally.rage>before)triggerInnerBuff(ally,own,round,log);}log.push(`${actor.name}悟道令己方低怒侠客补至${rageFloor.value}怒。`);}
     const drain=effectOf(actor,'skillDrainRage');if(drain){for(const foe of living(enemies)){const lost=reduceRage(foe,enemies,drain.amount,log);if(lost)log.push(`${actor.name}压制${foe.name}怒气 -${lost}。`);}}
     const xuantian=effectOf(actor,'skillDrainRageControl');if(xuantian){for(const foe of targets.filter(x=>x.alive)){if(Math.random()<Number(xuantian.chance||0)){let amount=Number(xuantian.amount||1);if(controlCount(foe)>0&&Math.random()<Number(xuantian.extraChance||0))amount+=Number(xuantian.extraAmount||2);const lost=reduceRage(foe,enemies,amount,log);if(lost)log.push(`${actor.name}触发【玄天指】，${foe.name}怒气 -${lost}${controlCount(foe)>0?'（控制中）':''}。`);}}}
     const rageSupport=effectOf(actor,'rageSupport');if(rageSupport&&Math.random()<rageSupport.chance){const allies=living(own).filter(x=>x!==actor);if(allies.length){const ally=allies[Math.floor(Math.random()*allies.length)];ally.rage=Math.min(8,ally.rage+rageSupport.amount);log.push(`${actor.name}的【焦尾琴】令${ally.name}怒气 +${rageSupport.amount}。`);}}
     if(skill.repeatChance&&living(enemies).length&&Math.random()<skill.repeatChance)performOne(actor,own,enemies,log,round,true,false);
   }
-  shieldAfterAction(actor,own,log);selfHealAfterAction(actor,log);
+  shieldAfterAction(actor,own,log,round);selfHealAfterAction(actor,log);
   return {usedSkill:useSkill,killed};
 }
 

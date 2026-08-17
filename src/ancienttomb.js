@@ -65,6 +65,17 @@ function pickDistinctMaterials(count=2){
   return picked;
 }
 
+function v1InnerItemsForFloor(floor,firstClear){
+  const f=Number(floor)||1,out={};
+  // 聚气丹/属性丹的原版完整投放数值未查到，以下为单机V1常驻迁移。
+  if(f>=50)out.juqi=1+(f>=250?1:0)+(f>=400?1:0);
+  if(firstClear&&f%25===0){
+    let pool=f<150?['qiangjin','tongpi','huoxue']:f<250?['atkdan','defdan','hpdan']:['critdan','hitdan','dodgedan','anticritdan','atkdan','defdan','hpdan'];
+    out[pool[(Math.floor(f/25)-1)%pool.length]]=1;
+  }
+  return out;
+}
+
 export function rollAncientTombReward(floor,{firstClear=false}={}){
   const f=Math.max(1,Math.min(ANCIENT_TOMB_MAX_FLOOR,Number(floor)||1));
   const materialEach=1+Math.floor((f-1)/100);
@@ -79,6 +90,7 @@ export function rollAncientTombReward(floor,{firstClear=false}={}){
     yuanyangCopies:firstClear?Number(YUANYANG_FIRST_REWARDS[f]||0):0,
     soulChoicePacks:firstClear&&f%100===0?1:0,
     wudaoPills:firstClear&&f>=200&&f%50===0 ? 15+Math.floor((f-200)/50)*5 : 0,
+    innerItems:v1InnerItemsForFloor(f,firstClear),
   };
 }
 

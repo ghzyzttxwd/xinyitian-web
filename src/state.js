@@ -37,7 +37,7 @@ function createInnerPowerState(){
   return {
     rooms:[null,null,null,null,null,null,null],
     lastTick:Date.now(),
-    items:{xingqi:0,yuling:0,wujue:0,lingqi:0,lingxian:0,juling:0,dingshen:0},
+    items:{xingqi:0,yuling:0,wujue:0,lingqi:0,lingxian:0,juling:0,juqi:0,dingshen:0,qiangjin:0,tongpi:0,huoxue:0,atkdan:0,defdan:0,hpdan:0,critdan:0,hitdan:0,dodgedan:0,anticritdan:0},
   };
 }
 
@@ -176,7 +176,7 @@ export function heroStats(state, heroId) {
   if (!tpl || !h) return null;
   const growth = 1 + (Math.max(1, h.level) - 1) * 0.085;
   const meridian = h.meridian || {}, k = heroKungfuBonuses(state, heroId), w=equippedWeaponBonuses(state,heroId), a=awakeningBaseMultiplier(state,heroId), wd=wudaoBonuses(state,heroId);
-  const ip = innerPowerBonuses(heroId,h.innerPower?.year||0,meridian.talent||0);
+  const ip = innerPowerBonuses(heroId,h.innerPower,meridian.talent||0);
   const rawAtk=tpl.base.atk*a.atk*growth+Number(meridian.atk||0)+k.atk+ip.flatAtk+w.atk;
   const rawDef=tpl.base.def*a.def*growth+Number(meridian.def||0)+k.def+ip.flatDef+w.def;
   const rawHp=tpl.base.hp*a.hp*growth+Number(meridian.hp||0)+k.hp+ip.flatHp+w.hp;
@@ -186,7 +186,7 @@ export function heroStats(state, heroId) {
     hp: Math.round(rawHp*(1+ip.hpPct/100)*(1+wd.hpPct/100)*(1+Number(w.hpPct||0)/100)),
     speed: tpl.base.speed + Number(a.speed||0) + Math.floor((h.level - 1) / 10),
     hit: k.hit+ip.hit+wd.hit+Number(w.hit||0), dodge: k.dodge+ip.dodge+wd.dodge+Number(w.dodge||0), crit: k.crit+ip.crit+wd.crit+Number(w.crit||0), antiCrit: k.antiCrit+ip.antiCrit+wd.antiCrit+Number(w.antiCrit||0),
-    damageBonus:ip.damageBonus+wd.damageBonus, damageReduction:ip.damageReduction+wd.damageReduction, initialRage:ip.initialRage,
+    damageBonus:ip.damageBonus+wd.damageBonus, damageReduction:ip.damageReduction+wd.damageReduction, initialRage:ip.initialRage, critDamage:ip.critDamage, critDamageReduction:ip.critDamageReduction,
   };
 }
 

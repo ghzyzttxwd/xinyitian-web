@@ -99,7 +99,7 @@ export function weaponStats(state,id){
   const mul=1 + r.breakthrough*.18;
   const out={atk:0,def:0,hp:0,power:0};
   for(const k of ['atk','def','hp'])out[k]=Math.round(((w.base[k]||0)+(w.grow[k]||0)*r.level)*mul);
-  out.power=Math.round(out.atk*4.6+out.def*3.5+out.hp*.7+r.breakthrough*8000+Number(r.smelt||0)*12000);
+  out.power=Math.round(out.atk*4.6+out.def*3.5+out.hp*.7+r.breakthrough*8000);
   return out;
 }
 

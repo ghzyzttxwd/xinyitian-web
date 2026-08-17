@@ -180,11 +180,11 @@ export function heroStats(state, heroId) {
   const rawDef=tpl.base.def*a.def*growth+Number(meridian.def||0)+k.def+ip.flatDef+w.def;
   const rawHp=tpl.base.hp*a.hp*growth+Number(meridian.hp||0)+k.hp+ip.flatHp+w.hp;
   return {
-    atk: Math.round(rawAtk*(1+ip.atkPct/100)*(1+wd.atkPct/100)),
-    def: Math.round(rawDef*(1+ip.defPct/100)*(1+wd.defPct/100)),
-    hp: Math.round(rawHp*(1+ip.hpPct/100)*(1+wd.hpPct/100)),
+    atk: Math.round(rawAtk*(1+ip.atkPct/100)*(1+wd.atkPct/100)*(1+Number(w.atkPct||0)/100)),
+    def: Math.round(rawDef*(1+ip.defPct/100)*(1+wd.defPct/100)*(1+Number(w.defPct||0)/100)),
+    hp: Math.round(rawHp*(1+ip.hpPct/100)*(1+wd.hpPct/100)*(1+Number(w.hpPct||0)/100)),
     speed: tpl.base.speed + Number(a.speed||0) + Math.floor((h.level - 1) / 10),
-    hit: k.hit+ip.hit+wd.hit, dodge: k.dodge+ip.dodge+wd.dodge, crit: k.crit+ip.crit+wd.crit, antiCrit: k.antiCrit+ip.antiCrit+wd.antiCrit,
+    hit: k.hit+ip.hit+wd.hit+Number(w.hit||0), dodge: k.dodge+ip.dodge+wd.dodge+Number(w.dodge||0), crit: k.crit+ip.crit+wd.crit+Number(w.crit||0), antiCrit: k.antiCrit+ip.antiCrit+wd.antiCrit+Number(w.antiCrit||0),
     damageBonus:ip.damageBonus+wd.damageBonus, damageReduction:ip.damageReduction+wd.damageReduction, initialRage:ip.initialRage,
   };
 }

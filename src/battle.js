@@ -4,6 +4,7 @@ import { RED_KUNGFU, DIVINE_KUNGFU, effectAtLevel } from './kungfu.js';
 import { weaponBattleEffects } from './weapons.js';
 import { effectiveHeroProfile, awakeningBattleEffects } from './awakening.js';
 import { applyWudaoProfile, wudaoBattleEffects } from './wudao.js';
+import { storyHeroProfile, storyBattleEffects } from './story.js';
 
 const CONTROL_TYPES=['stun','silence','seal'];
 const CONTROL_NAMES={stun:'眩晕',silence:'沉默',seal:'封穴'};
@@ -26,6 +27,7 @@ function effectsForHero(state, heroId) {
   out.push(...weaponBattleEffects(state,heroId));
   out.push(...awakeningBattleEffects(state,heroId));
   out.push(...wudaoBattleEffects(state,heroId));
+  out.push(...storyBattleEffects(state,heroId));
   return out;
 }
 
@@ -46,7 +48,7 @@ function cloneFighter(base) {
 
 function playerTeam(state) {
   const team=state.party.filter(Boolean).map(id=>{
-    const tpl=applyWudaoProfile(state,id,effectiveHeroProfile(state,id,HEROES[id])), s=heroStats(state,id), effects=effectsForHero(state,id);
+    const tpl=applyWudaoProfile(state,id,storyHeroProfile(state,id,effectiveHeroProfile(state,id,HEROES[id]))), s=heroStats(state,id), effects=effectsForHero(state,id);
     const rageEffect=effects.find(x=>x.kind==='rageBurst'),dodgeStart=effects.find(x=>x.kind==='dodgeStart');
     return cloneFighter({ id,name:tpl.name,side:'player',...s,dodge:Number(s.dodge||0)+Number(dodgeStart?.value||0),skill:tpl.skill,
       passive:tpl.passive||{},combat:tpl.combat||{},effects,initialRage:Number(s.initialRage||0)+Number(rageEffect?.initialRage||0) });
@@ -212,7 +214,7 @@ function performOne(actor,own,enemies,log,round,forceSkill=false,forceNormal=fal
   if(useSkill)applySkillAbnormals(actor,targets,action,round,log);
   log.push(`${actor.name}${useSkill?`施展【${action.name}】`:'普通攻击'}，造成 ${total.toLocaleString()} 伤害${crits?'，触发暴击':''}${misses?`，${misses}次闪避`:''}${guarded?`，${guarded}次被护盾挡下`:''}。${killed?' 有敌人倒下！':''}`);
   if(useSkill&&skill.refundOnKill&&killed)actor.rage+=skill.rageCost||4;
-  const steal=effectOf(actor,'lifesteal');if(steal&&total>0&&actor.alive){const heal=Math.round(total*steal.ratio);actor.hpNow=Math.min(actor.hp,actor.hpNow+heal);log.push(`${actor.name}凭【玄铁指环】吸血 ${heal.toLocaleString()}。`);}
+  const steal=effectOf(actor,'lifesteal');if(steal&&total>0&&actor.alive){const heal=Math.round(total*steal.ratio);actor.hpNow=Math.min(actor.hp,actor.hpNow+heal);log.push(`${actor.name}凭【${steal.label||'玄铁指环'}】吸血 ${heal.toLocaleString()}。`);}
   if(useSkill){
     applyThreeDuAfterSkill(actor,own,log);
     teamRage(own,skill.teamRage||0,actor,log);healTeam(own,actor,skill.healTeam||0,log);

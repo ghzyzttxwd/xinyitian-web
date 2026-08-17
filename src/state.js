@@ -8,6 +8,7 @@ import { createWudaoState, wudaoBonuses } from './wudao.js';
 import { createTasksState, createDailyTaskFields, ensureTaskState } from './tasks.js';
 import { calibratedHeroPower } from './power.js';
 import { createVipExtras } from './vip.js';
+import { storyHeroProfile } from './story.js';
 
 function newHeroState(id) {
   return {
@@ -171,7 +172,7 @@ export function heroKungfuBonuses(state, heroId) {
 }
 
 export function heroStats(state, heroId) {
-  const tpl = HEROES[heroId], h = state.heroes[heroId];
+  const tpl = storyHeroProfile(state,heroId,HEROES[heroId]), h = state.heroes[heroId];
   if (!tpl || !h) return null;
   const growth = 1 + (Math.max(1, h.level) - 1) * 0.085;
   const meridian = h.meridian || {}, k = heroKungfuBonuses(state, heroId), w=equippedWeaponBonuses(state,heroId), a=awakeningBaseMultiplier(state,heroId), wd=wudaoBonuses(state,heroId);

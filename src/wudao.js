@@ -1,3 +1,5 @@
+import { isStoryGod } from './story.js';
+
 // V0.9 悟道系统。
 // 已确认边界：神品后的后期养成；核心材料为悟道丹；原版V15锁死悟道不照搬。
 // 具体5阶消耗与元宝商店数量属于单机V1暂定值，后续统一经济校准。
@@ -28,7 +30,7 @@ export function ensureHeroWudao(hero){
 
 export function wudaoStage(state,heroId){
   const h=state?.heroes?.[heroId];
-  if(!h?.awakened)return 0;
+  if(!h?.awakened&&!isStoryGod(state,heroId))return 0;
   return Math.max(0,Math.min(WUDAO_MAX_STAGE,Number(h?.wudao?.stage||0)));
 }
 

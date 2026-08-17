@@ -36,6 +36,12 @@ const saveStatus = document.querySelector('#saveStatus');
 const fmt = n => Number(n || 0).toLocaleString('zh-CN');
 const rarityName = r => r >= 7 ? '神品' : r >= 6 ? '传奇' : r >= 5 ? '宗师' : '侠客';
 
+// 原客户端传奇招募令兑换倍率权重，总权重10000。
+const LEGEND_EXCHANGE_WEIGHTS = [
+  [1,1100],[2,1200],[3,1200],[4,1100],[5,1100],[6,1100],[7,1100],[8,900],[9,900],
+  [10,50],[11,50],[12,50],[13,50],[14,50],[15,50],
+];
+
 function commit() {
   normalizeDaily(state);
   recalcVip(state);
@@ -97,7 +103,7 @@ function renderHome() {
     </section>
 
     <section class="card">
-      <div class="section-title"><h3>当前阵容</h3><small>最多6人</small></div>
+      <div class="section-title"><h3>当前阵容</h3><small>最多6人 · 在侠客页调整</small></div>
       <div class="party-grid">${partyHtml()}</div>
     </section>
 
@@ -117,11 +123,33 @@ function renderHome() {
   `;
 }
 
+function recruitStatusHtml(id) {
+  const tpl = HEROES[id];
+  const recruit = tpl.recruit;
+  if (!recruit) {
+    if (id === 'xiaozhao') return '<span class="muted">首充6元获得</span>';
+    return '<span class="muted">剧情/后续开放</span>';
+  }
+  if (recruit.type === 'vip8') return '<span class="muted">VIP8专属礼包</span>';
+  if (state.player.chapter < (tpl.unlock || 0)) return `<span class="muted">第${tpl.unlock}幕开放</span>`;
+  if (recruit.type === 'legendToken') {
+    const enough = state.player.legendTokens >= recruit.cost;
+    return `<button class="btn ${enough ? 'btn-primary' : ''}" data-recruit-hero="${id}" ${enough ? '' : 'disabled'}>${fmt(recruit.cost)}传奇令</button>`;
+  }
+  if (recruit.type === 'special') {
+    const have = Number(state.specials?.[recruit.item] || 0);
+    const enough = have >= recruit.cost;
+    return `<div style="text-align:right"><div class="hero-meta">${recruit.item} ${fmt(have)}/${fmt(recruit.cost)}</div><button class="btn ${enough ? 'btn-primary' : ''}" data-recruit-hero="${id}" ${enough ? '' : 'disabled'}>兑换</button></div>`;
+  }
+  return '<span class="muted">未开放</span>';
+}
+
 function heroCard(id) {
   const tpl = HEROES[id];
   const h = state.heroes[id];
   const owned = h?.owned;
-  const unlockText = tpl.recruit?.type === 'vip8' ? 'VIP8礼包' : tpl.unlock ? `第${tpl.unlock}幕开放` : '初始/活动';
+  const inParty = state.party.includes(id);
+  const unlockText = tpl.recruit?.type === 'vip8' ? 'VIP8礼包' : tpl.unlock ? `第${tpl.unlock}幕开放` : (id === 'xiaozhao' ? '首充6元' : '初始/活动');
   const s = owned ? heroStats(state,id) : null;
   return `<div class="hero-card ${owned ? '' : 'locked'}">
     <div class="hero-card-row">
@@ -130,7 +158,9 @@ function heroCard(id) {
         <div class="hero-meta">${tpl.role} · ${owned ? `Lv.${h.level} · 战力 ${fmt(heroPower(state,id))}` : unlockText}</div>
         ${s ? `<div class="hero-meta">攻 ${fmt(s.atk)} · 防 ${fmt(s.def)} · 血 ${fmt(s.hp)}</div>` : ''}
       </div>
-      <div>${owned ? `<button class="btn" data-level-hero="${id}">升级</button>` : '<span class="muted">未获得</span>'}</div>
+      <div class="action-row">
+        ${owned ? `<button class="btn" data-level-hero="${id}">升级</button><button class="btn ${inParty ? 'btn-gold' : ''}" data-toggle-party="${id}">${inParty ? '下阵' : '上阵'}</button>` : recruitStatusHtml(id)}
+      </div>
     </div>
   </div>`;
 }
@@ -140,11 +170,12 @@ function renderHeroes() {
     const ao = state.heroes[a]?.owned ? 1 : 0;
     const bo = state.heroes[b]?.owned ? 1 : 0;
     if (ao !== bo) return bo - ao;
+    if (HEROES[a].unlock !== HEROES[b].unlock) return HEROES[a].unlock - HEROES[b].unlock;
     return HEROES[b].rarity - HEROES[a].rarity;
   });
   pageEl.innerHTML = `
     <div class="section-title"><h2>侠客</h2><small>${ids.filter(id=>state.heroes[id]?.owned).length}/${ids.length}</small></div>
-    <div class="notice">V0.1先接入等级与阵容战力。经脉、功法、内力、神品会按任务书继续接入。</div>
+    <div class="notice">已接入侠客升级、上阵/下阵、传奇令定向招募。六人阵容可自由调整。</div>
     <div class="hero-list" style="margin-top:10px">${ids.map(heroCard).join('')}</div>
   `;
 }
@@ -181,8 +212,9 @@ function renderChallenge() {
 function rechargeHtml() {
   return RECHARGE_PACKS.map(p => {
     const first = !state.recharge.firstDoubleUsed[p.yuan];
+    const extra = p.yuan === 6 && !state.recharge.first6Claimed ? ' · 首充小昭礼包' : '';
     return `<button class="btn ${p.yuan === 648 ? 'btn-gold' : ''}" data-recharge="${p.yuan}">
-      ${p.yuan}元<br><small>${first ? `首充 ${fmt(p.gems * 2)}元宝` : `${fmt(p.gems + p.repeatBonus)}元宝`}</small>
+      ${p.yuan}元<br><small>${first ? `首充 ${fmt(p.gems * 2)}元宝` : `${fmt(p.gems + p.repeatBonus)}元宝`}${extra}</small>
     </button>`;
   }).join('');
 }
@@ -196,13 +228,27 @@ function moneyTreeLimit(vip) {
   return 10;
 }
 
+function renderInnCard() {
+  return `<section class="card">
+    <div class="section-title"><h3>客栈</h3><small>定向招募</small></div>
+    <div class="grid-2">
+      <div class="mini-stat"><div class="muted">侠客信物</div><div class="big-number small">${fmt(state.player.heroTokens)}</div></div>
+      <div class="mini-stat"><div class="muted">传奇招募令</div><div class="big-number small">${fmt(state.player.legendTokens)}</div></div>
+    </div>
+    <div class="notice" style="margin-top:10px">每次消耗10侠客信物兑换传奇招募令，保留原版多倍奖励，最高15倍。达到幕数后到“侠客”页定向招募。</div>
+    <button class="btn btn-primary btn-block" data-action="exchangeLegend" ${state.player.heroTokens < 10 ? 'disabled' : ''} style="margin-top:10px">10信物兑换传奇令</button>
+  </section>`;
+}
+
 function renderMore() {
   const staminaLimit = STAMINA_BUY_LIMIT[state.player.vip] ?? 24;
   const staminaCost = staminaPrice(state.daily.staminaBuys);
   const treeLimit = moneyTreeLimit(state.player.vip);
   const vip8Bought = !!state.recharge.vipGiftBought[8];
   pageEl.innerHTML = `
-    <div class="section-title"><h2>更多</h2><small>资源与存档</small></div>
+    <div class="section-title"><h2>更多</h2><small>客栈 · 充值 · 资源 · 存档</small></div>
+
+    ${renderInnCard()}
 
     <section class="card">
       <div class="section-title"><h3>模拟充值</h3><small>累计 ¥${fmt(state.player.totalRecharge)}</small></div>
@@ -262,6 +308,7 @@ function showBattle(result, title, rewardText = '') {
 }
 
 function challengeChapter() {
+  if (!state.party.some(Boolean)) return alert('请至少上阵1名侠客。');
   const need = requiredPlayerLevelForChapter(state.player.chapter);
   if (state.player.level < need) {
     alert(`等级不足：第${state.player.chapter}幕需要 Lv.${need}。先速战获取经验。`);
@@ -296,6 +343,7 @@ function quickBattle() {
 }
 
 function challengeTower() {
+  if (!state.party.some(Boolean)) return alert('请至少上阵1名侠客。');
   const result = runTowerBattle(state);
   let reward = '';
   if (result.win) {
@@ -322,28 +370,91 @@ function levelHero(id) {
 }
 
 function placeHeroIfPossible(id) {
-  if (state.party.includes(id)) return;
+  if (state.party.includes(id)) return true;
   const empty = state.party.findIndex(x => !x);
-  if (empty >= 0) state.party[empty] = id;
+  if (empty >= 0) {
+    state.party[empty] = id;
+    return true;
+  }
+  return false;
+}
+
+function togglePartyHero(id) {
+  const h = state.heroes[id];
+  if (!h?.owned) return;
+  const index = state.party.indexOf(id);
+  if (index >= 0) {
+    if (state.party.filter(Boolean).length <= 1) return alert('阵容至少保留1名侠客。');
+    state.party[index] = null;
+    commit();
+    return;
+  }
+  const empty = state.party.findIndex(x => !x);
+  if (empty < 0) return alert('阵容已满6人，请先下阵一名侠客。');
+  state.party[empty] = id;
+  commit();
+}
+
+function recruitHero(id) {
+  const tpl = HEROES[id];
+  const h = state.heroes[id];
+  if (!tpl || !h || h.owned) return;
+  if (state.player.chapter < (tpl.unlock || 0)) return alert(`需要推进到第${tpl.unlock}幕。`);
+  const recruit = tpl.recruit;
+  if (!recruit) return alert('该侠客目前不能在客栈招募。');
+  if (recruit.type === 'legendToken') {
+    if (state.player.legendTokens < recruit.cost) return alert(`传奇招募令不足，需要${recruit.cost}。`);
+    state.player.legendTokens -= recruit.cost;
+  } else if (recruit.type === 'special') {
+    const have = Number(state.specials?.[recruit.item] || 0);
+    if (have < recruit.cost) return alert(`${recruit.item}不足，需要${recruit.cost}。`);
+    state.specials[recruit.item] = have - recruit.cost;
+  } else {
+    return alert('该侠客通过其他方式获得。');
+  }
+  ownHero(state, id);
+  const placed = placeHeroIfPossible(id);
+  commit();
+  alert(`${tpl.name}招募成功${placed ? '，已自动加入空余阵位' : ''}。`);
+}
+
+function rollLegendMultiplier() {
+  let roll = Math.floor(Math.random() * 10000) + 1;
+  for (const [multi, weight] of LEGEND_EXCHANGE_WEIGHTS) {
+    roll -= weight;
+    if (roll <= 0) return multi;
+  }
+  return 1;
+}
+
+function exchangeLegendTokens() {
+  if (state.player.heroTokens < 10) return alert('侠客信物不足，需要10个。');
+  state.player.heroTokens -= 10;
+  const multi = rollLegendMultiplier();
+  state.player.legendTokens += multi;
+  commit();
+  alert(`客栈兑换成功：获得传奇招募令×${multi}${multi >= 10 ? '！大暴击！' : multi > 1 ? '！触发多倍奖励！' : '。'}`);
 }
 
 function recharge(yuan) {
   const pack = RECHARGE_PACKS.find(x => x.yuan === yuan);
   if (!pack) return;
   const first = !state.recharge.firstDoubleUsed[yuan];
+  const firstSixNow = yuan === 6 && !state.recharge.first6Claimed;
   const gained = first ? pack.gems * 2 : pack.gems + pack.repeatBonus;
   state.recharge.firstDoubleUsed[yuan] = true;
   state.player.totalRecharge += yuan;
   state.player.gems += gained;
 
-  if (yuan === 6 && !state.recharge.first6Claimed) {
+  if (firstSixNow) {
     state.recharge.first6Claimed = true;
+    state.player.gems += 60;
     ownHero(state, 'xiaozhao');
     placeHeroIfPossible('xiaozhao');
   }
   recalcVip(state);
   commit();
-  alert(`模拟充值 ¥${yuan}：获得 ${fmt(gained)} 元宝${yuan === 6 && state.recharge.first6Claimed ? '。首充小昭已领取。' : '。'}`);
+  alert(`模拟充值 ¥${yuan}：获得 ${fmt(gained)} 元宝${firstSixNow ? '；首充礼包额外60元宝，小昭已领取。' : '。'}`);
 }
 
 function buyStamina() {
@@ -415,11 +526,14 @@ pageEl.addEventListener('click', e => {
   if (!btn) return;
   if (btn.dataset.pageJump) { currentPage = btn.dataset.pageJump; render(); return; }
   if (btn.dataset.levelHero) { levelHero(btn.dataset.levelHero); return; }
+  if (btn.dataset.toggleParty) { togglePartyHero(btn.dataset.toggleParty); return; }
+  if (btn.dataset.recruitHero) { recruitHero(btn.dataset.recruitHero); return; }
   if (btn.dataset.recharge) { recharge(Number(btn.dataset.recharge)); return; }
   const action = btn.dataset.action;
   if (action === 'chapter') challengeChapter();
   if (action === 'quick') quickBattle();
   if (action === 'tower') challengeTower();
+  if (action === 'exchangeLegend') exchangeLegendTokens();
   if (action === 'buyStamina') buyStamina();
   if (action === 'moneyTree') moneyTree();
   if (action === 'vip8gift') buyVip8Gift();

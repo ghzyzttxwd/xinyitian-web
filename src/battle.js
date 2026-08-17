@@ -30,7 +30,7 @@ function playerTeam(state) {
   return state.party.filter(Boolean).map(id=>{
     const tpl=HEROES[id], s=heroStats(state,id), effects=effectsForHero(state,id);
     const rageEffect=effects.find(x=>x.kind==='rageBurst');
-    return cloneFighter({ id,name:tpl.name,side:'player',...s,skill:tpl.skill,effects,initialRage:rageEffect?.initialRage||0 });
+    return cloneFighter({ id,name:tpl.name,side:'player',...s,skill:tpl.skill,effects,initialRage:(rageEffect?.initialRage||0)+Number(s.initialRage||0) });
   });
 }
 
@@ -58,7 +58,7 @@ function damage(attacker,target,multiplier=1,ignoreDef=0){
   const effectiveDef=target.def*(1-ignoreDef), base=Math.max(attacker.atk*.28,attacker.atk-effectiveDef*.56), variance=.92+Math.random()*.16;
   const critChance=Math.max(0,Math.min(.75,.05+Number(attacker.crit||0)/100-Number(target.antiCrit||0)/100));
   const crit=Math.random()<critChance;
-  return {amount:Math.max(1,Math.round(base*multiplier*variance*(crit?1.5:1))),miss:false,crit};
+  const bonus=1+Number(attacker.damageBonus||0)/100,reduction=Math.max(.2,1-Number(target.damageReduction||0)/100); return {amount:Math.max(1,Math.round(base*multiplier*variance*(crit?1.5:1)*bonus*reduction)),miss:false,crit};
 }
 
 function tryRevive(target,log){

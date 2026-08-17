@@ -41,13 +41,15 @@ function hubTile(kind,seal,title,sub){
 function enhanceJianghuHub(){
   if(pageEl.dataset.page!=='more'||pageEl.dataset.more!=='hub')return;
   const grid=pageEl.querySelector('.hub-grid');
-  if(!grid||grid.querySelector('[data-jh-panel]'))return;
-  const main=hubTile('mainline','主','主线','挑战当前幕 / 连续速战');
-  const tower=hubTile('tower','塔','少林千宝塔','永久爬塔 / 经脉资源');
-  grid.prepend(tower);
-  grid.prepend(main);
+  if(!grid)return;
+  let main=grid.querySelector('[data-more-section="mainline"]')||grid.querySelector('[data-jh-panel="mainline"]');
+  let tower=grid.querySelector('[data-more-section="tower"]')||grid.querySelector('[data-jh-panel="tower"]');
+  if(!main){main=hubTile('mainline','主','主线','挑战当前幕 / 连续速战');grid.prepend(main);}
+  if(!tower){tower=hubTile('tower','塔','少林千宝塔','永久爬塔 / 经脉资源');grid.insertBefore(tower,main.nextSibling);}
   const vip=grid.querySelector('[data-more-section="vip"]');
-  if(vip)grid.insertBefore(vip,grid.children[2]||null);
+  grid.prepend(main);
+  grid.insertBefore(tower,main.nextSibling);
+  if(vip)grid.insertBefore(vip,tower.nextSibling);
 }
 
 function subHead(title,sub){

@@ -1,8 +1,9 @@
-const CACHE = 'xinyitian-v0.21.4';
+const CACHE = 'xinyitian-v0.21.5';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
+  './scenes.css',
   './assets/original/hero-bg.jpg',
   './assets/original/jianghu-bg.jpg',
   './assets/original/icon-gems.png',
@@ -11,6 +12,9 @@ const ASSETS = [
   './assets/original/figure-player.webp',
   './assets/original/figure-wuji.webp',
   './assets/original/figure-zhangsanfeng.webp',
+  './assets/original/formation-bg.webp',
+  './assets/original/kungfu-bg.webp',
+  './assets/original/challenge-bg.webp',
   './manifest.webmanifest',
   './src/data.js',
   './src/state.js',

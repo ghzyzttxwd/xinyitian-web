@@ -141,3 +141,14 @@ button,input,select{font:inherit}button{color:inherit}
 .kungfu-slot.open .muted{color:#c2a66f}
 .kungfu-slot.locked{opacity:.34;border-style:dashed}
 @media(max-width:430px){.resource-icon{width:19px;height:19px;flex-basis:19px}.resource-item{min-width:74px;padding-left:8px;padding-right:8px}}
+
+
+/* V0.21.1：手机资源栏固定两行 */
+@media(max-width:600px){
+.resource-bar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;overflow-x:hidden;padding:4px;scrollbar-width:none}
+.resource-item{min-width:0;width:auto;padding:4px 3px;gap:3px;justify-content:center;text-align:center;border-right:1px solid rgba(210,170,101,.13);overflow:hidden}
+.resource-item:nth-child(5n){border-right:0}
+.resource-icon{width:16px;height:16px;flex:0 0 16px}
+.resource-label{font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:0}
+.resource-value{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+}

@@ -1,0 +1,135 @@
+name: V0.21 Actionable Kungfu Slots
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/v021-kungfu-slot-ui.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch kungfu slot interaction
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/app.js')
+          s=p.read_text()
+
+          old="${ref&&!locked?`<button class=\"btn btn-ghost btn-block\" data-unequip-slot=\"${i}\" style=\"margin-top:6px\">卸下</button>`:''}</div>"
+          new="${ref&&!locked?`<button class=\"btn btn-ghost btn-block\" data-unequip-slot=\"${i}\" style=\"margin-top:6px\">卸下</button>`:!locked?`<button class=\"btn btn-block\" data-action=\"chooseKungfu\" style=\"margin-top:6px\">选择功法</button>`:''}</div>"
+          if s.count(old)!=1:
+              raise SystemExit(f'slot action target count={s.count(old)}')
+          s=s.replace(old,new,1)
+
+          old="${used?'已装备':'装备'}</button>"
+          new="${used?'已装备':canEquip?'装备到空槽':'无空槽'}</button>"
+          if s.count(old)!=2:
+              raise SystemExit(f'equip button label target count={s.count(old)}')
+          s=s.replace(old,new,2)
+
+          old='<div class="section-title"><h3>红色功法</h3><small>25门</small></div><div class="hero-list">${redKungfuCards()}</div>'
+          new='<div class="section-title" id="kungfuLibrary"><h3>红色功法</h3><small>25门</small></div><div class="hero-list">${redKungfuCards()}</div>'
+          if s.count(old)!=1:
+              raise SystemExit(f'library anchor target count={s.count(old)}')
+          s=s.replace(old,new,1)
+
+          old="const action=btn.dataset.action;if(action==='chapter')challengeChapter();"
+          new="const action=btn.dataset.action;if(action==='chooseKungfu'){document.querySelector('#kungfuLibrary')?.scrollIntoView({behavior:'smooth',block:'start'});return;}if(action==='chapter')challengeChapter();"
+          if s.count(old)!=1:
+              raise SystemExit(f'click handler target count={s.count(old)}')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+
+          sw=Path('sw.js')
+          w=sw.read_text()
+          if 'xinyitian-v0.21.1' not in w:
+              raise SystemExit('unexpected service worker version')
+          sw.write_text(w.replace('xinyitian-v0.21.1','xinyitian-v0.21.2',1))
+          PY
+
+      - name: Static checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in src/*.js sw.js; do node --check "$f"; done
+          grep -Fq 'data-action="chooseKungfu"' src/app.js
+          grep -Fq 'id="kungfuLibrary"' src/app.js
+          grep -Fq "装备到空槽" src/app.js
+          grep -Fq "无空槽" src/app.js
+          grep -Fq 'xinyitian-v0.21.2' sw.js
+
+      - name: Install Chromium runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/xyt-pw && cd /tmp/xyt-pw
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+
+      - name: Verify actionable slots on mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/xyt-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          cat >/tmp/xyt-pw/test.cjs <<'JS'
+          const {chromium}=require('playwright');
+          const A=(v,m)=>{if(!v)throw new Error(m)};
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:390,height:844}});
+            const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+            const seed={version:1,player:{level:100,chapter:110,copper:5e7,gems:5e4,stamina:100,staminaCap:100,totalRecharge:0,heroExp:5e5,meridianPills:99999,breakthroughPills:9999},heroes:{huangshan:{owned:true,level:1,exp:0,awakened:false,meridian:{progress:0,atk:0,def:0,hp:0,talent:20},kungfu:{equipped:Array(8).fill(null)}}},kungfu:{red:{'104001':{level:1,copies:0}}}};
+            await page.addInitScript(s=>localStorage.setItem('xinyitian_single_v1',JSON.stringify(s)),seed);
+            await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});
+            await page.click('.nav-item[data-page="growth"]');
+            await page.selectOption('#growthHeroSelect','huangshan');
+            await page.click('[data-growth-tab="kungfu"]');
+            A(await page.locator('.kungfu-slot.open').count()===3,'expected 3 open slots');
+            A(await page.locator('button[data-action="chooseKungfu"]').count()===3,'expected 3 choose-kungfu buttons');
+            await page.locator('button[data-action="chooseKungfu"]').first().click();
+            A(await page.locator('#kungfuLibrary').count()===1,'kungfu library anchor missing');
+            const equip=page.locator('button[data-equip-kungfu="104001"]');
+            A(await equip.isEnabled(),'equip button disabled');
+            A((await equip.innerText())==='装备到空槽',`unexpected label ${await equip.innerText()}`);
+            await equip.click();
+            A(await page.locator('[data-unequip-slot="0"]').count()===1,'slot 1 not equipped');
+            A(await page.locator('button[data-action="chooseKungfu"]').count()===2,'empty-slot action count did not decrease');
+            let saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('xinyitian_single_v1')));
+            A(saved.heroes.huangshan.kungfu.equipped[0]==='104001','equip not persisted');
+            await page.click('[data-unequip-slot="0"]');
+            A(await page.locator('button[data-action="chooseKungfu"]').count()===3,'choose action did not return after unequip');
+            saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('xinyitian_single_v1')));
+            A(saved.heroes.huangshan.kungfu.equipped[0]===null,'unequip not persisted');
+            const res=await page.evaluate(()=>{const b=document.querySelector('#resourceBar'),a=[...b.children];return{rows:new Set(a.map(x=>x.offsetTop)).size,overflow:b.scrollWidth>b.clientWidth}});
+            A(res.rows===2&&!res.overflow,`resource regression ${JSON.stringify(res)}`);
+            A(errors.length===0,`page errors ${errors.join(' | ')}`);
+            await browser.close();
+          })().catch(e=>{const msg=String(e.stack||e).replace(/%/g,'%25').replace(/\r/g,'%0D').replace(/\n/g,'%0A');console.error(`::error file=src/app.js,line=1::${msg}`);process.exit(1)});
+          JS
+          cd /tmp/xyt-pw && node test.cjs
+
+      - name: Commit patch and remove workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/v021-kungfu-slot-ui.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/app.js sw.js .github/workflows/v021-kungfu-slot-ui.yml
+          git commit -m 'feat: make kungfu slots actionable'
+          git push origin main

@@ -5,19 +5,19 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#15120f" />
   <title>新倚天屠龙记·单机精简版</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=0234" />
-  <link rel="stylesheet" href="./styles.css?v=0234" />
-  <link rel="stylesheet" href="./scenes.css?v=0234" />
-  <link rel="stylesheet" href="./jianghu-nav.css?v=0234" />
-  <link rel="stylesheet" href="./battle-visual.css?v=0234" />
-  <link rel="stylesheet" href="./battle-polish.css?v=0234" />
+  <link rel="manifest" href="./manifest.webmanifest?v=0235" />
+  <link rel="stylesheet" href="./styles.css?v=0235" />
+  <link rel="stylesheet" href="./scenes.css?v=0235" />
+  <link rel="stylesheet" href="./jianghu-nav.css?v=0235" />
+  <link rel="stylesheet" href="./battle-visual.css?v=0235" />
+  <link rel="stylesheet" href="./battle-polish.css?v=0235" />
 </head>
 <body>
   <div id="app" class="app-shell">
     <header class="topbar">
       <div class="brand-wrap">
         <div class="brand">新倚天屠龙记</div>
-        <div class="subtitle">单机精简版 · V0.23.4</div>
+        <div class="subtitle">单机精简版 · V0.23.5</div>
       </div>
       <button id="saveStatus" class="save-status" type="button">已保存</button>
     </header>
@@ -35,9 +35,15 @@
     </nav>
   </div>
 
-  <dialog id="battleDialog" class="modal battle-modal">
+  <div id="battleDialog" class="modal battle-modal" hidden>
     <div id="battleDialogBody"></div>
-  </dialog>
+  </div>
+  <div id="battleControlRail" class="battle-control-rail" hidden aria-label="战斗控制">
+    <button type="button" data-rail-log>战报</button>
+    <button type="button" data-rail-speed>1×</button>
+    <button type="button" data-rail-skip>跳过</button>
+    <button type="button" data-rail-close>退出</button>
+  </div>
 
   <dialog id="genericDialog" class="modal">
     <div id="genericDialogBody"></div>
@@ -45,11 +51,11 @@
 
   <input id="importSaveInput" type="file" accept="application/json,.json" hidden />
 
-  <script src="./battle-dialog-shell.js?v=0234"></script>
-  <script type="module" src="./src/app.js?v=0234"></script>
-  <script type="module" src="./src/jianghu-nav.js?v=0234"></script>
-  <script type="module" src="./src/battle-visual.js?v=0234"></script>
-  <script type="module" src="./src/battle-polish.js?v=0234"></script>
-  <script type="module" src="./src/battle-input-fix.js?v=0234"></script>
+  <script src="./battle-dialog-shell.js?v=0235"></script>
+  <script type="module" src="./src/app.js?v=0235"></script>
+  <script type="module" src="./src/jianghu-nav.js?v=0235"></script>
+  <script type="module" src="./src/battle-visual.js?v=0235"></script>
+  <script type="module" src="./src/battle-polish.js?v=0235"></script>
+  <script type="module" src="./src/battle-input-fix.js?v=0235"></script>
 </body>
 </html>

@@ -19,19 +19,6 @@
         location.replace(u.href);
       }).catch(()=>{});
     }
-    window.addEventListener('DOMContentLoaded',()=>{
-      const page=document.querySelector('#page');
-      if(!page)return;
-      const guard=new MutationObserver(()=>{
-        const el=page.querySelector('.game-info .hero-meta');
-        if(el && /V0\.\d+/.test(el.textContent||'')){
-          el.textContent='V0.23.6 · 手机优先 · 本地存档';
-          el.classList.remove('hero-meta');
-          el.classList.add('game-version-meta');
-        }
-      });
-      guard.observe(page,{childList:true,subtree:true});
-    });
   })();
   </script>
   <link rel="manifest" href="./manifest.webmanifest?v=0236" />
@@ -55,6 +42,21 @@
     <section id="resourceBar" class="resource-bar" aria-label="资源栏"></section>
 
     <main id="page" class="page" aria-live="polite"></main>
+    <script>
+    (()=>{
+      const page=document.querySelector('#page');
+      if(!page)return;
+      const guard=new MutationObserver(()=>{
+        const el=page.querySelector('.game-info .hero-meta');
+        if(el && /V0\.\d+/.test(el.textContent||'')){
+          el.textContent='V0.23.6 · 手机优先 · 本地存档';
+          el.classList.remove('hero-meta');
+          el.classList.add('game-version-meta');
+        }
+      });
+      guard.observe(page,{childList:true,subtree:true});
+    })();
+    </script>
 
     <nav class="bottom-nav" aria-label="主导航">
       <button class="nav-item active" data-page="home" type="button"><span>首页</span></button>

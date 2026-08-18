@@ -23,8 +23,6 @@ function repairKungfuInventory(){
     if(!rec||typeof rec!=='object')continue;
     rec.level=Math.max(0,Math.floor(Number(rec.level)||0));
     rec.copies=Math.max(0,Math.floor(Number(rec.copies)||0));
-    // Inventory invariant: a red kungfu cannot have spare bodies while the
-    // owned copy is missing. Promote one spare body to the Lv.1 owned copy.
     if(rec.level<=0&&rec.copies>0){
       rec.level=1;
       rec.copies-=1;
@@ -73,7 +71,7 @@ function showPowerGain(delta){
   const rect=item.getBoundingClientRect();
   const toast=document.createElement('div');
   toast.className='power-gain-float';
-  toast.textContent=`战力 +${fmtPower(delta)}`;
+  toast.textContent=`战力 +${Math.max(0,Math.round(delta))}`;
   toast.style.left=`${Math.max(12,Math.min(window.innerWidth-12,rect.left+rect.width/2))}px`;
   toast.style.top=`${Math.min(window.innerHeight-54,rect.bottom+6)}px`;
   document.body.appendChild(toast);

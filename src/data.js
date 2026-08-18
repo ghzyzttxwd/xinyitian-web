@@ -15,7 +15,7 @@ export const RECHARGE_PACKS = [
   { yuan: 648, gems: 6480, repeatBonus: 2000 },
 ];
 
-export const STAMINA_BUY_LIMIT = [8,12,12,16,16,20,20,24,24,24,24,24,24,24,24,24];
+export const STAMINA_BUY_LIMIT = [8,12,12,16,16,20,20,36,36,36,36,36,36,36,36,36];
 
 export function staminaPrice(index) {
   const n = index + 1;

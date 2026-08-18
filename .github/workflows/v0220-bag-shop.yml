@@ -1,0 +1,130 @@
+name: V0.22.0 Backpack and Mall
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/v0220-bag-shop.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch backpack and mall
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          def sub_once(text, pattern, repl, label, flags=0):
+              new, n = re.subn(pattern, repl, text, count=1, flags=flags)
+              if n != 1:
+                  raise SystemExit(f'{label}: expected 1 replacement, got {n}')
+              return new
+
+          app_path = Path('src/app.js')
+          app = app_path.read_text(encoding='utf-8')
+
+          # 1) 藏经阁正式接入已有“功法帖”：优先消耗功法帖，不足部分才扣元宝。
+          new_kungfu_panel = r'''function kungfuDrawPricing(times=1){const n=Number(times)===5?5:1,tickets=Math.min(n,Math.max(0,Number(state.player.kungfuTickets||0))),gemDraws=n-tickets;return{n,tickets,gemDraws,cost:gemDraws*300};}
+function kungfuDrawLabel(times=1){const p=kungfuDrawPricing(times);if(p.tickets===p.n)return `抽${p.n}次 · 功法帖${p.tickets}`;if(!p.tickets)return `抽${p.n}次 · ${p.cost}元宝`;return `抽${p.n}次 · 功法帖${p.tickets} + ${p.cost}元宝`;}
+function renderKungfuPanel(){
+ const talent=heroTalent(state,selectedGrowthHero),slots=kungfuSlotsForTalent(talent),p1=kungfuDrawPricing(1),p5=kungfuDrawPricing(5);
+ return `<section class="card kungfu-main-card"><div class="section-title"><h3>${HEROES[selectedGrowthHero].name} · 功法</h3><small>天赋 ${fmt(talent)} · 已开 ${slots}/8槽</small></div>${kungfuEquipSlotsHtml()}<div class="notice" style="margin-top:10px">功法槽按总天赋实时解锁：220天赋开启前三槽；280/340/400/460/520依次开启第4～8槽。</div></section>
+ <section class="card"><div class="section-title"><h3>藏经阁</h3><small>功法帖 ${fmt(state.player.kungfuTickets||0)}</small></div><div class="notice">功法帖优先用于抽取；不足的次数才按300元宝/次补足。红色功法概率按当前原版元宝抽取的2%处理；低品质结果暂折算为功法残页。</div><div class="action-row" style="margin-top:10px"><button class="btn" data-action="drawKungfu1" ${state.player.gems<p1.cost?'disabled':''}>${kungfuDrawLabel(1)}</button><button class="btn btn-gold" data-action="drawKungfu5" ${state.player.gems<p5.cost?'disabled':''}>${kungfuDrawLabel(5)}</button></div><div class="hero-meta" style="margin-top:8px">累计抽取 ${fmt(state.kungfu?.drawCount||0)} 次 · 功法残页 ${fmt(state.kungfu?.fragments||0)}</div></section>
+ <div class="section-title" id="kungfuLibrary"><h3>红色功法</h3><small>25门</small></div><div class="hero-list">${redKungfuCards()}</div>
+ <div class="section-title" style="margin-top:18px"><h3>神级融合功法</h3><small>13门</small></div><div class="hero-list">${divineCards()}</div>`;
+}
+function formatRemain'''
+          app = sub_once(app, r'function renderKungfuPanel\(\)\{.*?\nfunction formatRemain', new_kungfu_panel, 'renderKungfuPanel', re.S)
+
+          new_draw = r'''function drawKungfu(times=1){const p=kungfuDrawPricing(times),n=p.n;if(state.player.gems<p.cost)return alert(`元宝不足，需要${p.cost}元宝。`);state.player.kungfuTickets=Math.max(0,Number(state.player.kungfuTickets||0)-p.tickets);state.player.gems-=p.cost;const reds=[];let fragments=0;for(let i=0;i<n;i++){state.kungfu.drawCount=Number(state.kungfu.drawCount||0)+1;if(Math.random()<.02){const ids=Object.keys(RED_KUNGFU),id=ids[Math.floor(Math.random()*ids.length)];addKungfuCopy(id,1);reds.push(RED_KUNGFU[id].name);}else{state.kungfu.fragments=Number(state.kungfu.fragments||0)+1;fragments++;}}bumpDaily(state,'scripture',n);commit();const redText=reds.length?`红色功法：${reds.map(x=>`【${x}】`).join('、')}`:'未获得红色功法',costText=p.tickets?`消耗功法帖${p.tickets}${p.cost?` + ${p.cost}元宝`:''}`:`消耗${p.cost}元宝`;alert(`藏经阁抽取${n}次（${costText}）：${redText}${fragments?`；功法残页 +${fragments}`:''}。`);}
+function removeKungfuEverywhere'''
+          app = sub_once(app, r'function drawKungfu\(times=1\)\{.*?\nfunction removeKungfuEverywhere', new_draw, 'drawKungfu', re.S)
+
+          # 2) 背包与原版基础商城。商城依据 APK v281 ItemShop；删去宠物朱果与当前无用途改名卡。
+          insert = r'''
+const MALL_GOODS=[
+  {id:'heroTokens',name:'侠客信物',desc:'可在客栈兑换侠客招募令',amount:1,price:50,level:10,sourceId:'3008521'},
+  {id:'kungfuTickets',name:'功法帖',desc:'用于藏经阁抽取功法',amount:1,price:300,level:10,sourceId:'3002502'},
+  {id:'heroExp',name:'侠客经验',desc:'用于提升侠客等级',amount:1000,price:10,level:10,sourceId:'113'},
+  {id:'meridianPills',name:'经脉丹',desc:'用于经脉冲穴和突破',amount:1,price:10,level:10,sourceId:'3004205'},
+  {id:'kungfuFragments',name:'功法残页',desc:'功法养成资源',amount:1,price:50,level:10,sourceId:'3000038'},
+];
+function grantMallGood(id,count){const n=Math.max(1,Math.floor(Number(count)||1));if(id==='heroTokens')state.player.heroTokens=Number(state.player.heroTokens||0)+n;if(id==='kungfuTickets')state.player.kungfuTickets=Number(state.player.kungfuTickets||0)+n;if(id==='heroExp')state.player.heroExp=Number(state.player.heroExp||0)+1000*n;if(id==='meridianPills')state.player.meridianPills=Number(state.player.meridianPills||0)+n;if(id==='kungfuFragments')state.kungfu.fragments=Number(state.kungfu.fragments||0)+n;}
+function buyMallItem(id,qty=1){const g=MALL_GOODS.find(x=>x.id===id),n=Number(qty)===10?10:1;if(!g)return;if(state.player.level<g.level)return alert(`商城商品需要玩家Lv.${g.level}。`);const cost=g.price*n;if(state.player.gems<cost)return alert(`元宝不足，需要${fmt(cost)}。`);state.player.gems-=cost;grantMallGood(id,n);commit();alert(`购买成功：【${g.name}】${g.amount*n>1?` ×${fmt(g.amount*n)}`:''}，消耗${fmt(cost)}元宝。`);}
+function bagItem(name,qty,desc=''){return `<div class="bag-item"><div class="bag-item-main"><b>${name}</b>${desc?`<small>${desc}</small>`:''}</div><strong>×${fmt(qty)}</strong></div>`;}
+function bagSection(title,items,empty='暂无物品'){return `<section class="card bag-section"><div class="section-title"><h3>${title}</h3><small>${items.length}类</small></div>${items.length?`<div class="bag-grid">${items.join('')}</div>`:`<div class="empty-bag">${empty}</div>`}</section>`;}
+function renderMoreBag(){
+ const core=[
+   bagItem('侠客经验',state.player.heroExp||0,'侠客升级'),bagItem('侠客信物',state.player.heroTokens||0,'客栈兑换'),bagItem('传奇招募令',state.player.legendTokens||0,'传奇侠客招募'),
+   bagItem('经脉丹',state.player.meridianPills||0,'经脉冲穴'),bagItem('突破丹',state.player.breakthroughPills||0,'经脉突破'),bagItem('功法帖',state.player.kungfuTickets||0,'藏经阁抽取'),bagItem('功法残页',state.kungfu?.fragments||0,'功法资源'),bagItem('悟道丹',state.wudao?.pills||0,'神品悟道'),
+   bagItem('精铁',state.weapons?.iron||0,'神兵锻造'),bagItem('天外陨铁',state.weapons?.meteorIron||0,'神兵熔铸')
+ ];
+ const inner=Object.entries(INNER_POWER_MEDICINES).filter(([id])=>Number(state.innerPower?.items?.[id]||0)>0).map(([id,m])=>bagItem(m.name,state.innerPower.items[id],innerMedicineEffectText(id,0)));
+ const special=Object.entries(state.specials||{}).filter(([,n])=>Number(n)>0).map(([name,n])=>bagItem(name,n,'奇侠兑换物'));
+ const soul=[];for(const [id,c] of Object.entries(AWAKENINGS)){const f=Number(state.awakening?.fragments?.[id]||0),s=Number(state.awakening?.stones?.[id]||0);if(f>0)soul.push(bagItem(`${c.godName}魂石碎片`,f,`${SOUL_SHARDS_PER_STONE}碎片合成1魂石`));if(s>0)soul.push(bagItem(`${c.godName}魂石`,s,'神品觉醒'));}if(Number(state.awakening?.choicePacks||0)>0)soul.push(bagItem('神品魂石碎片自选包',state.awakening.choicePacks,'神品资源'));
+ const weaponCopies=Object.entries(WEAPONS).filter(([id])=>Number(state.weapons?.items?.[id]?.copies||0)>0).map(([id,w])=>bagItem(`${w.name}备用本体`,state.weapons.items[id].copies,'突破/熔铸消耗'));
+ pageEl.innerHTML=`${moreSubHead('背包','当前存档中的真实物资统一查看')}<section class="card bag-wallet"><div><span>铜钱</span><b>${fmt(state.player.copper)}</b></div><div><span>元宝</span><b>${fmt(state.player.gems)}</b></div><div><span>体力</span><b>${fmt(state.player.stamina)}/${fmt(state.player.staminaCap)}</b></div></section>${bagSection('常用材料',core)}${bagSection('内力药物',inner)}${bagSection('神品材料',soul)}${bagSection('神兵备用本体',weaponCopies)}${bagSection('奇侠兑换物',special)}`;
+}
+function mallGoodCard(g){const open=state.player.level>=g.level,can1=open&&state.player.gems>=g.price,can10=open&&state.player.gems>=g.price*10,amountText=g.amount>1?`每份 ×${fmt(g.amount)}`:'每份 ×1';return `<div class="mall-good ${open?'':'locked'}"><div class="mall-good-head"><div><b>${g.name}</b><small>${g.desc}</small></div><span class="mall-price"><img src="./assets/original/icon-gems.png" alt="">${fmt(g.price)}</span></div><div class="hero-meta">${amountText} · ${open?'已解锁':`Lv.${g.level}解锁`}</div><div class="action-row"><button class="btn" data-mall-buy="${g.id}" data-mall-qty="1" ${can1?'':'disabled'}>购买1份</button><button class="btn btn-gold" data-mall-buy="${g.id}" data-mall-qty="10" ${can10?'':'disabled'}>购买10份</button></div></div>`;}
+function renderMoreMall(){pageEl.innerHTML=`${moreSubHead('商城','原版基础元宝商城')}<section class="card mall-banner"><div><span class="eyebrow">元宝余额</span><div class="big-number">${fmt(state.player.gems)}</div></div><img src="./assets/original/icon-gems.png" alt="元宝"></section><section class="card"><div class="section-title"><h3>常驻商品</h3><small>Lv.10开放</small></div><div class="notice">价格与Lv.10门槛来自当前 APK 的 v281 ItemShop。原版朱果属于已删除的宠物系统；改名卡在当前单机版没有命名玩法，因此不投放，避免出现买了无法使用的死道具。</div><div class="mall-grid">${MALL_GOODS.map(mallGoodCard).join('')}</div></section>`;}
+'''
+          app = sub_once(app, r'\nconst MORE_MENU=\[', insert + '\nconst MORE_MENU=[', 'insert bag mall')
+          app = sub_once(app, r"const MORE_MENU=\[\n  \['inn'", "const MORE_MENU=[\n  ['bag','包','背包','材料与道具总览'],\n  ['mall','商','商城','原版基础元宝商城'],\n  ['inn'", 'more menu')
+          app = sub_once(app, r"function renderMore\(\)\{if\(moreSection==='inn'\)", "function renderMore(){if(moreSection==='bag')return renderMoreBag();if(moreSection==='mall')return renderMoreMall();if(moreSection==='inn')", 'renderMore dispatch')
+          app = sub_once(app, r"if\(btn\.dataset\.recharge\)\{recharge\(Number\(btn\.dataset\.recharge\)\);return;\}", "if(btn.dataset.mallBuy){buyMallItem(btn.dataset.mallBuy,Number(btn.dataset.mallQty||1));return;}if(btn.dataset.recharge){recharge(Number(btn.dataset.recharge));return;}", 'mall click routing')
+          app = app.replace('V0.21 · 手机优先 · 本地存档','V0.22.0 · 手机优先 · 本地存档')
+          if 'V0.22.0 · 手机优先 · 本地存档' not in app:
+              raise SystemExit('settings version replacement failed')
+          app_path.write_text(app,encoding='utf-8')
+
+          index=Path('index.html').read_text(encoding='utf-8')
+          if index.count('单机精简版 · V0.21.10')!=1: raise SystemExit('index version anchor mismatch')
+          Path('index.html').write_text(index.replace('单机精简版 · V0.21.10','单机精简版 · V0.22.0'),encoding='utf-8')
+
+          sw=Path('sw.js').read_text(encoding='utf-8')
+          if sw.count("xinyitian-v0.21.10")!=1: raise SystemExit('sw cache anchor mismatch')
+          Path('sw.js').write_text(sw.replace('xinyitian-v0.21.10','xinyitian-v0.22.0'),encoding='utf-8')
+
+          css_path=Path('styles.css')
+          css=css_path.read_text(encoding='utf-8')
+          marker='/* V0.22.0 backpack + mall */'
+          if marker not in css:
+              css += r'''
+
+/* V0.22.0 backpack + mall */
+.bag-wallet{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.bag-wallet>div{background:rgba(255,255,255,.045);border:1px solid rgba(212,178,111,.18);border-radius:12px;padding:10px}.bag-wallet span{display:block;font-size:12px;opacity:.7}.bag-wallet b{display:block;margin-top:4px;font-size:17px}.bag-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.bag-item{min-width:0;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(212,178,111,.14)}.bag-item-main{min-width:0;display:flex;flex-direction:column;gap:3px}.bag-item-main b{font-size:14px}.bag-item-main small{font-size:11px;opacity:.62;white-space:normal}.bag-item strong{flex:0 0 auto;color:#e5c482;font-size:14px}.empty-bag{padding:18px 8px;text-align:center;opacity:.5}.mall-banner{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,rgba(112,64,20,.5),rgba(36,25,18,.84))}.mall-banner img{width:54px;height:54px;object-fit:contain}.mall-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.mall-good{padding:12px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(212,178,111,.2)}.mall-good-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.mall-good-head>div{min-width:0}.mall-good-head b{display:block;font-size:15px}.mall-good-head small{display:block;margin-top:4px;font-size:11px;line-height:1.4;opacity:.64}.mall-price{display:flex;align-items:center;gap:3px;flex:0 0 auto;color:#e5c482;font-weight:800}.mall-price img{width:18px;height:18px;object-fit:contain}.mall-good .action-row{margin-top:9px}.mall-good .btn{flex:1;padding-left:6px;padding-right:6px}
+@media(max-width:560px){.bag-wallet{grid-template-columns:repeat(3,minmax(0,1fr))}.bag-wallet b{font-size:14px}.bag-grid,.mall-grid{grid-template-columns:1fr}.mall-good .action-row{display:grid;grid-template-columns:1fr 1fr}}
+'''
+          css_path.write_text(css,encoding='utf-8')
+          PY
+
+          node --check src/app.js
+          node --check src/state.js
+          node --check src/data.js
+          grep -q "V0.22.0" index.html
+          grep -q "xinyitian-v0.22.0" sw.js
+          grep -q "renderMoreBag" src/app.js
+          grep -q "renderMoreMall" src/app.js
+          grep -q "data-mall-buy" src/app.js
+          grep -q "kungfuDrawPricing" src/app.js
+
+          rm -f .github/workflows/v0220-bag-shop.yml
+          git config user.name "xinyitian-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "feat: add backpack and original mall"
+          git push origin main

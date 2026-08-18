@@ -7,7 +7,7 @@
   <title>新倚天屠龙记·单机精简版</title>
   <script>
   (()=>{
-    const RESET_KEY='xyt-cache-reset-0236';
+    const RESET_KEY='xyt-cache-reset-0237';
     if('serviceWorker' in navigator){
       if(!sessionStorage.getItem(RESET_KEY)){
         sessionStorage.setItem(RESET_KEY,'1');
@@ -16,28 +16,49 @@
           ('caches' in window)?caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('xinyitian-')).map(k=>caches.delete(k)))):Promise.resolve()
         ]).then(()=>{
           const u=new URL(location.href);
-          u.searchParams.set('_xyt','0236');
+          u.searchParams.set('_xyt','0237');
           location.replace(u.href);
         }).catch(()=>{});
       }
       try{navigator.serviceWorker.register=()=>Promise.resolve({});}catch{}
     }
+
+    // V0.23.7 stability guard.
+    // battle-polish only needs DOM insertion notifications; watching animation
+    // class changes made finish() recursively re-enter polish on Android.
+    // Settings observers only need top-level page renders; subtree observation
+    // caused their own version-text edits to trigger themselves indefinitely.
+    const NativeMutationObserver=window.MutationObserver;
+    if(NativeMutationObserver){
+      window.MutationObserver=class XYTMutationObserver extends NativeMutationObserver{
+        observe(target,options={}){
+          const next={...options};
+          if(target?.id==='battleDialogBody'&&next.attributes){
+            next.attributes=false;
+            delete next.attributeFilter;
+            delete next.attributeOldValue;
+          }
+          if(target?.id==='page')next.subtree=false;
+          return super.observe(target,next);
+        }
+      };
+    }
   })();
   </script>
-  <link rel="manifest" href="./manifest.webmanifest?v=0236" />
-  <link rel="stylesheet" href="./styles.css?v=0236" />
-  <link rel="stylesheet" href="./scenes.css?v=0236" />
-  <link rel="stylesheet" href="./jianghu-nav.css?v=0236" />
-  <link rel="stylesheet" href="./battle-visual.css?v=0236" />
-  <link rel="stylesheet" href="./battle-polish.css?v=0236" />
-  <link rel="stylesheet" href="./battle-controls.css?v=0236" />
+  <link rel="manifest" href="./manifest.webmanifest?v=0237" />
+  <link rel="stylesheet" href="./styles.css?v=0237" />
+  <link rel="stylesheet" href="./scenes.css?v=0237" />
+  <link rel="stylesheet" href="./jianghu-nav.css?v=0237" />
+  <link rel="stylesheet" href="./battle-visual.css?v=0237" />
+  <link rel="stylesheet" href="./battle-polish.css?v=0237" />
+  <link rel="stylesheet" href="./battle-controls.css?v=0237" />
 </head>
 <body>
   <div id="app" class="app-shell">
     <header class="topbar">
       <div class="brand-wrap">
         <div class="brand">新倚天屠龙记</div>
-        <div class="subtitle">单机精简版 · V0.23.6</div>
+        <div class="subtitle">单机精简版 · V0.23.7</div>
       </div>
       <button id="saveStatus" class="save-status" type="button">已保存</button>
     </header>
@@ -52,7 +73,7 @@
       const guard=new MutationObserver(()=>{
         const el=page.querySelector('.game-info .hero-meta');
         if(el && /V0\.\d+/.test(el.textContent||'')){
-          el.textContent='V0.23.6 · 手机优先 · 本地存档';
+          el.textContent='V0.23.7 · 手机优先 · 本地存档';
           el.classList.remove('hero-meta');
           el.classList.add('game-version-meta');
         }
@@ -86,11 +107,11 @@
 
   <input id="importSaveInput" type="file" accept="application/json,.json" hidden />
 
-  <script src="./battle-dialog-shell.js?v=0236"></script>
-  <script type="module" src="./src/app.js?v=0236"></script>
-  <script type="module" src="./src/jianghu-nav.js?v=0236"></script>
-  <script type="module" src="./src/battle-visual.js?v=0236"></script>
-  <script type="module" src="./src/battle-polish.js?v=0236"></script>
-  <script type="module" src="./src/battle-input-fix.js?v=0236"></script>
+  <script src="./battle-dialog-shell.js?v=0237"></script>
+  <script type="module" src="./src/app.js?v=0237"></script>
+  <script type="module" src="./src/jianghu-nav.js?v=0237"></script>
+  <script type="module" src="./src/battle-visual.js?v=0237"></script>
+  <script type="module" src="./src/battle-polish.js?v=0237"></script>
+  <script type="module" src="./src/battle-input-fix.js?v=0237"></script>
 </body>
 </html>

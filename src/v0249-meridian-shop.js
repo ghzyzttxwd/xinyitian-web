@@ -14,7 +14,7 @@ const GOODS={
     id:'breakthroughPills',
     name:'突破丹',
     desc:'命门突破所需',
-    price:10,
+    price:50,
     dailyLimit:200,
     dailyKey:'breakthroughMallBuys',
   },

@@ -7,7 +7,7 @@
   <title>新倚天屠龙记·单机精简版</title>
   <script>
   (()=>{
-    const RESET_KEY='xyt-cache-reset-0246';
+    const RESET_KEY='xyt-cache-reset-0247';
     if('serviceWorker' in navigator){
       if(!sessionStorage.getItem(RESET_KEY)){
         sessionStorage.setItem(RESET_KEY,'1');
@@ -16,7 +16,7 @@
           ('caches' in window)?caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('xinyitian-')).map(k=>caches.delete(k)))):Promise.resolve()
         ]).then(()=>{
           const u=new URL(location.href);
-          u.searchParams.set('_xyt','0246');
+          u.searchParams.set('_xyt','0247');
           location.replace(u.href);
         }).catch(()=>{});
       }
@@ -42,22 +42,23 @@
     }
   })();
   </script>
-  <link rel="manifest" href="./manifest.webmanifest?v=0246" />
-  <link rel="stylesheet" href="./styles.css?v=0246" />
-  <link rel="stylesheet" href="./scenes.css?v=0246" />
-  <link rel="stylesheet" href="./jianghu-nav.css?v=0246" />
-  <link rel="stylesheet" href="./battle-visual.css?v=0246" />
-  <link rel="stylesheet" href="./battle-polish.css?v=0246" />
-  <link rel="stylesheet" href="./battle-v240.css?v=0246" />
-  <link rel="stylesheet" href="./battle-ultimate.css?v=0246" />
-  <link rel="stylesheet" href="./battle-controls.css?v=0246" />
+  <link rel="manifest" href="./manifest.webmanifest?v=0247" />
+  <link rel="stylesheet" href="./styles.css?v=0247" />
+  <link rel="stylesheet" href="./scenes.css?v=0247" />
+  <link rel="stylesheet" href="./jianghu-nav.css?v=0247" />
+  <link rel="stylesheet" href="./battle-visual.css?v=0247" />
+  <link rel="stylesheet" href="./battle-polish.css?v=0247" />
+  <link rel="stylesheet" href="./battle-v240.css?v=0247" />
+  <link rel="stylesheet" href="./battle-speed.css?v=0247" />
+  <link rel="stylesheet" href="./battle-ultimate.css?v=0247" />
+  <link rel="stylesheet" href="./battle-controls.css?v=0247" />
 </head>
 <body>
   <div id="app" class="app-shell">
     <header class="topbar">
       <div class="brand-wrap">
         <div class="brand">新倚天屠龙记</div>
-        <div class="subtitle">单机精简版 · V0.24.6</div>
+        <div class="subtitle">单机精简版 · V0.24.7</div>
       </div>
       <button id="saveStatus" class="save-status" type="button">已保存</button>
     </header>
@@ -72,7 +73,7 @@
       const guard=new MutationObserver(()=>{
         const el=page.querySelector('.game-info .hero-meta');
         if(el && /V0\.\d+/.test(el.textContent||'')){
-          el.textContent='V0.24.6 · 手机优先 · 本地存档';
+          el.textContent='V0.24.7 · 手机优先 · 本地存档';
           el.classList.remove('hero-meta');
           el.classList.add('game-version-meta');
         }
@@ -106,14 +107,14 @@
 
   <input id="importSaveInput" type="file" accept="application/json,.json" hidden />
 
-  <script src="./battle-dialog-shell.js?v=0246"></script>
-  <script type="module" src="./src/v0245-fragments.js?v=0246"></script>
-  <script type="module" src="./src/v0243-fixes.js?v=0246"></script>
-  <script type="module" src="./src/app.js?v=0246"></script>
-  <script type="module" src="./src/jianghu-nav.js?v=0246"></script>
-  <script type="module" src="./src/battle-visual.js?v=0246"></script>
-  <script type="module" src="./src/battle-ultimate.js?v=0246"></script>
-  <script type="module" src="./src/battle-polish.js?v=0246"></script>
-  <script type="module" src="./src/battle-input-fix.js?v=0246"></script>
+  <script src="./battle-dialog-shell.js?v=0247"></script>
+  <script type="module" src="./src/v0245-fragments.js?v=0247"></script>
+  <script type="module" src="./src/v0243-fixes.js?v=0247"></script>
+  <script type="module" src="./src/app.js?v=0247"></script>
+  <script type="module" src="./src/jianghu-nav.js?v=0247"></script>
+  <script type="module" src="./src/battle-visual.js?v=0247"></script>
+  <script type="module" src="./src/battle-ultimate.js?v=0247"></script>
+  <script type="module" src="./src/battle-polish.js?v=0247"></script>
+  <script type="module" src="./src/battle-input-fix.js?v=0247"></script>
 </body>
 </html>

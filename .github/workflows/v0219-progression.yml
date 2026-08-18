@@ -1,0 +1,111 @@
+name: V0.21.9 Original Progression
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/v0219-progression.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch progression calls
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          # data.js: exact v580 level EXP + chapter gates.
+          p=Path('src/data.js'); s=p.read_text()
+          anchor="import { towerPowerRating } from './power.js';"
+          imp="import { originalPlayerExpToNext, originalChapterRequiredLevel } from './progression.js';"
+          if imp not in s:
+              if anchor not in s: raise SystemExit('data import anchor missing')
+              s=s.replace(anchor,anchor+'\n'+imp,1)
+          s,n=re.subn(r"export function requiredPlayerLevelForChapter\(chapter\) \{.*?\n\}","export function requiredPlayerLevelForChapter(chapter) {\n  return originalChapterRequiredLevel(chapter);\n}",s,count=1,flags=re.S)
+          if n!=1: raise SystemExit(f'chapter gate replace={n}')
+          s,n=re.subn(r"export function playerExpToNext\(level\) \{.*?\n\}","export function playerExpToNext(level) {\n  return originalPlayerExpToNext(level);\n}",s,count=1,flags=re.S)
+          if n!=1: raise SystemExit(f'player exp replace={n}')
+          p.write_text(s)
+
+          # app.js: exact original chapter aggregate and per-level sweep reward.
+          p=Path('src/app.js'); s=p.read_text()
+          anchor="import { storyHeroProfile, storyStageInfo, storyStageText, storyMilestonesAtChapter, isStoryGod } from './story.js';"
+          imp="import { originalChapterReward, originalSweepReward } from './progression.js';"
+          if imp not in s:
+              if anchor not in s: raise SystemExit('app import anchor missing')
+              s=s.replace(anchor,anchor+'\n'+imp,1)
+          new_ch="""function challengeChapter(){if(!hasParty())return alert('当前没有上阵侠客。');const need=requiredPlayerLevelForChapter(state.player.chapter);if(state.player.level<need)return alert(`等级不足：第${state.player.chapter}幕需要 Lv.${need}。先速战获取经验。`);const chapter=state.player.chapter,result=runChapterBattle(state);let reward='';if(result.win){const original=originalChapterReward(chapter),exp=original?.exp??(180+chapter*36),copper=original?.copper??(12000+chapter*1800),heroExp=original?.heroExp??(800+chapter*80);addPlayerExp(state,exp);state.player.copper+=copper;state.player.heroExp=Number(state.player.heroExp||0)+heroExp;state.player.heroTokens+=chapter%5===0?2:0;state.player.chapter+=1;reward=`玩家经验 +${fmt(exp)} · 侠客经验 +${fmt(heroExp)} · 铜钱 +${fmt(copper)}${chapter%5===0?' · 侠客信物 +2':''}`;const story=storyMilestonesAtChapter(state.player.chapter);if(story.length)reward+=` · 剧情觉醒：${story.map(x=>`${x.heroId==='player'?'少侠':'张无忌'}【${x.title}】`).join('、')}`;commit();}showBattle(result,`主线 · 第${chapter}幕`,reward);}"""
+          new_q="""function quickBattle(){const times=5,cost=times*5;if(state.player.stamina<cost)return alert(`体力不足，连续速战5次需要${cost}体力。`);state.player.stamina-=cost;state.daily.quickBattles+=times;let exp=0,heroExp=0,copper=0;for(let i=0;i<times;i++){const one=originalSweepReward(state.player.level);exp+=one.exp;heroExp+=one.heroExp;copper+=one.copper;addPlayerExp(state,one.exp);}state.player.copper+=copper;state.player.heroExp=Number(state.player.heroExp||0)+heroExp;commit();const parts=[`玩家经验 +${fmt(exp)}`,`侠客经验 +${fmt(heroExp)}`];if(copper)parts.push(`铜钱 +${fmt(copper)}`);alert(`连续速战5次完成：${parts.join('，')}，体力 -${cost}。`);}"""
+          pat=r"function challengeChapter\(\)\{.*?\}\nfunction quickBattle\(\)\{.*?\}\nfunction towerBaseMeridianPills"
+          repl=new_ch+'\n'+new_q+'\nfunction towerBaseMeridianPills'
+          s,n=re.subn(pat,repl,s,count=1,flags=re.S)
+          if n!=1: raise SystemExit(f'mainline/quick replace={n}')
+          p.write_text(s)
+
+          # Cache + visible version.
+          p=Path('sw.js'); s=p.read_text()
+          s,n=re.subn(r"const CACHE = 'xinyitian-v0\.21\.\d+';","const CACHE = 'xinyitian-v0.21.9';",s,count=1)
+          if n!=1: raise SystemExit('cache version missing')
+          asset="  './src/progression.js',\n"
+          if asset not in s:
+              a="  './src/state.js',\n"
+              if a not in s: raise SystemExit('sw asset anchor missing')
+              s=s.replace(a,a+asset,1)
+          p.write_text(s)
+
+          p=Path('index.html'); s=p.read_text()
+          s,n=re.subn(r'单机精简版 · V0\.21\.\d+','单机精简版 · V0.21.9',s,count=1)
+          if n!=1: raise SystemExit('visible version missing')
+          p.write_text(s)
+          PY
+
+      - name: Syntax and exact-data regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in src/*.js sw.js; do node --check "$f"; done
+          node --input-type=module <<'NODE'
+          import {playerExpToNext,requiredPlayerLevelForChapter} from './src/data.js';
+          import {originalChapterReward,originalSweepReward,roleMaxExp} from './src/progression.js';
+          import {GROWTH_TASKS} from './src/tasks.js';
+          const eq=(a,b,msg)=>{if(JSON.stringify(a)!==JSON.stringify(b))throw new Error(`${msg}: ${JSON.stringify(a)} != ${JSON.stringify(b)}`);};
+          eq(playerExpToNext(29),80000,'Lv29->30');
+          eq(playerExpToNext(50),1060000,'Lv50->51');
+          eq(roleMaxExp(240),513000000,'rolelv row240');
+          eq(requiredPlayerLevelForChapter(10),17,'chapter10 gate');
+          eq(requiredPlayerLevelForChapter(20),30,'chapter20 gate');
+          eq(requiredPlayerLevelForChapter(50),60,'chapter50 gate');
+          eq(requiredPlayerLevelForChapter(100),110,'chapter100 gate');
+          eq(originalChapterReward(20),{exp:26000,heroExp:20000,copper:40000,fights:4},'chapter20 reward');
+          eq(originalChapterReward(100),{exp:279000,heroExp:108000,copper:216000,fights:6},'chapter100 reward');
+          eq(originalSweepReward(29),{exp:5800,heroExp:2100,copper:0},'lv29 sweep');
+          eq(GROWTH_TASKS.reduce((sum,x)=>sum+x.exp,0),1718000,'growth task exp');
+          console.log('V0.21.9 progression regression passed');
+          NODE
+          grep -F "const original=originalChapterReward(chapter)" src/app.js
+          grep -F "const one=originalSweepReward(state.player.level)" src/app.js
+          ! grep -F "const exp=180+chapter*36" src/app.js
+          ! grep -F "oneExp=260+state.player.chapter*44" src/app.js
+          grep -F "xinyitian-v0.21.9" sw.js
+          grep -F "./src/progression.js" sw.js
+
+      - name: Commit and remove verifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/v0219-progression.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix: align player progression with v580'
+          git push

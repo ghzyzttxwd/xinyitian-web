@@ -38,7 +38,10 @@ export function originalChapterRequiredLevel(chapter){
   return Math.min(240,ch+10);
 }
 
-// rolelv.zhuxiansaod：单次主线速战，网页仍按原规则每次5体力。
+// 原客户端 rolelv.zhuxiansaod 是“一次速战计数”的奖励。
+// 网页把一幕内的多场战斗合并为一次主线挑战；为避免因此把前期成长压成约1/4，
+// 网页的一次“速战”固定按早期一幕4场战斗折算。按钮连续5次即结算20份原表速战奖励。
+export const WEB_SWEEP_BATTLE_EQUIVALENT=4;
 export function originalSweepReward(level){
   const lv=Math.max(1,Math.min(240,Math.floor(Number(level)||1)));
   const exp=lv<=30?lv*200:(lv-18)*500;
@@ -48,7 +51,7 @@ export function originalSweepReward(level){
   else if(lv<=60)heroExp=2200+Math.floor((lv-31)/10)*100;
   else if(lv<=210)heroExp=2600+Math.floor((lv-61)/10)*200;
   else heroExp=5600;
-  return {exp,heroExp,copper:0};
+  return {exp:exp*WEB_SWEEP_BATTLE_EQUIVALENT,heroExp:heroExp*WEB_SWEEP_BATTLE_EQUIVALENT,copper:0};
 }
 
 // 网页把原版一幕内的多场 trunk_event 合并成一次挑战，因此这里返回整幕汇总。

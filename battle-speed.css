@@ -1,0 +1,50 @@
+/* V0.24.7 battle animation timing. 1× is intentionally ~half of old base speed. */
+.battle-v240[data-bv-speed-level="1"] .bv-fighter.hit .bv-portrait{animation-duration:.68s!important}
+.battle-v240[data-bv-speed-level="1"] .bv-fighter.skill-cast .bv-portrait{animation-duration:1.36s!important}
+.battle-v240[data-bv-speed-level="1"] .bv-fighter.revive .bv-portrait{animation-duration:1.30s!important}
+.battle-v240[data-bv-speed-level="1"] .bv-impact.slash:before,.battle-v240[data-bv-speed-level="1"] .bv-impact.slash:after{animation-duration:.84s!important}
+.battle-v240[data-bv-speed-level="1"] .bv-impact.burst{animation-duration:1.10s!important}
+.battle-v240[data-bv-speed-level="1"] .bv-impact.burst:after{animation-duration:1.00s!important}
+.battle-v240[data-bv-speed-level="1"] .bv-skill-aura{animation-duration:1.44s!important}
+.battle-v240[data-bv-speed-level="1"] .bv-skill-wave{animation-duration:1.28s!important}
+.battle-v240[data-bv-speed-level="1"] .bv-float{animation-duration:1.70s!important}
+
+.battle-v240[data-bv-speed-level="2"] .bv-fighter.hit .bv-portrait{animation-duration:.34s!important}
+.battle-v240[data-bv-speed-level="2"] .bv-fighter.skill-cast .bv-portrait{animation-duration:.68s!important}
+.battle-v240[data-bv-speed-level="2"] .bv-fighter.revive .bv-portrait{animation-duration:.65s!important}
+.battle-v240[data-bv-speed-level="2"] .bv-impact.slash:before,.battle-v240[data-bv-speed-level="2"] .bv-impact.slash:after{animation-duration:.42s!important}
+.battle-v240[data-bv-speed-level="2"] .bv-impact.burst{animation-duration:.55s!important}
+.battle-v240[data-bv-speed-level="2"] .bv-impact.burst:after{animation-duration:.50s!important}
+.battle-v240[data-bv-speed-level="2"] .bv-skill-aura{animation-duration:.72s!important}
+.battle-v240[data-bv-speed-level="2"] .bv-skill-wave{animation-duration:.64s!important}
+.battle-v240[data-bv-speed-level="2"] .bv-float{animation-duration:.85s!important}
+
+.battle-v240[data-bv-speed-level="3"] .bv-fighter.hit .bv-portrait{animation-duration:.227s!important}
+.battle-v240[data-bv-speed-level="3"] .bv-fighter.skill-cast .bv-portrait{animation-duration:.453s!important}
+.battle-v240[data-bv-speed-level="3"] .bv-fighter.revive .bv-portrait{animation-duration:.433s!important}
+.battle-v240[data-bv-speed-level="3"] .bv-impact.slash:before,.battle-v240[data-bv-speed-level="3"] .bv-impact.slash:after{animation-duration:.28s!important}
+.battle-v240[data-bv-speed-level="3"] .bv-impact.burst{animation-duration:.367s!important}
+.battle-v240[data-bv-speed-level="3"] .bv-impact.burst:after{animation-duration:.333s!important}
+.battle-v240[data-bv-speed-level="3"] .bv-skill-aura{animation-duration:.48s!important}
+.battle-v240[data-bv-speed-level="3"] .bv-skill-wave{animation-duration:.427s!important}
+.battle-v240[data-bv-speed-level="3"] .bv-float{animation-duration:.567s!important}
+
+.battle-v240[data-bv-speed-level="4"] .bv-fighter.hit .bv-portrait{animation-duration:.17s!important}
+.battle-v240[data-bv-speed-level="4"] .bv-fighter.skill-cast .bv-portrait{animation-duration:.34s!important}
+.battle-v240[data-bv-speed-level="4"] .bv-fighter.revive .bv-portrait{animation-duration:.325s!important}
+.battle-v240[data-bv-speed-level="4"] .bv-impact.slash:before,.battle-v240[data-bv-speed-level="4"] .bv-impact.slash:after{animation-duration:.21s!important}
+.battle-v240[data-bv-speed-level="4"] .bv-impact.burst{animation-duration:.275s!important}
+.battle-v240[data-bv-speed-level="4"] .bv-impact.burst:after{animation-duration:.25s!important}
+.battle-v240[data-bv-speed-level="4"] .bv-skill-aura{animation-duration:.36s!important}
+.battle-v240[data-bv-speed-level="4"] .bv-skill-wave{animation-duration:.32s!important}
+.battle-v240[data-bv-speed-level="4"] .bv-float{animation-duration:.425s!important}
+
+.battle-v240[data-bv-speed-level="5"] .bv-fighter.hit .bv-portrait{animation-duration:.136s!important}
+.battle-v240[data-bv-speed-level="5"] .bv-fighter.skill-cast .bv-portrait{animation-duration:.272s!important}
+.battle-v240[data-bv-speed-level="5"] .bv-fighter.revive .bv-portrait{animation-duration:.26s!important}
+.battle-v240[data-bv-speed-level="5"] .bv-impact.slash:before,.battle-v240[data-bv-speed-level="5"] .bv-impact.slash:after{animation-duration:.168s!important}
+.battle-v240[data-bv-speed-level="5"] .bv-impact.burst{animation-duration:.22s!important}
+.battle-v240[data-bv-speed-level="5"] .bv-impact.burst:after{animation-duration:.20s!important}
+.battle-v240[data-bv-speed-level="5"] .bv-skill-aura{animation-duration:.288s!important}
+.battle-v240[data-bv-speed-level="5"] .bv-skill-wave{animation-duration:.256s!important}
+.battle-v240[data-bv-speed-level="5"] .bv-float{animation-duration:.34s!important}

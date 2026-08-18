@@ -1,4 +1,4 @@
-const CACHE = 'xinyitian-v0.21.7';
+const CACHE = 'xinyitian-v0.21.8';
 const ASSETS = [
   './',
   './index.html',
@@ -18,6 +18,7 @@ const ASSETS = [
   './assets/original/challenge-bg.webp',
   './manifest.webmanifest',
   './src/data.js',
+  './src/levelstats.js',
   './src/state.js',
   './src/story.js',
   './src/battle.js',

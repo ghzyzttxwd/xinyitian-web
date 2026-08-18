@@ -10,6 +10,7 @@ import { innerPowerBattleEffects } from './innerpower.js';
 const CONTROL_TYPES=['stun','silence','seal'];
 const CONTROL_NAMES={stun:'眩晕',silence:'沉默',seal:'封穴'};
 const THREE_DU=['duer','dunan','dujie'];
+const ENEMY_POWER_MULTIPLIER=4;
 
 function effectsForHero(state, heroId) {
   const h=state.heroes?.[heroId], out=[];
@@ -62,7 +63,7 @@ function playerTeam(state) {
 }
 
 function makeEnemyTeam(power,label='江湖敌手') {
-  const count=power<14000?3:power<50000?4:6, each=power/count, team=[];
+  const count=6, tunedPower=power*ENEMY_POWER_MULTIPLIER, each=tunedPower/count, team=[];
   for(let i=0;i<count;i++){
     const scale=.93+i*.035, atk=Math.max(60,Math.round(each*.155*scale)), def=Math.max(40,Math.round(each*.087*scale)), hp=Math.max(800,Math.round(each*.83*scale));
     team.push(cloneFighter({id:`enemy-${i}`,name:`${label}${i+1}`,side:'enemy',atk,def,hp,speed:92+i*2,hit:0,dodge:0,crit:0,antiCrit:0,effects:[],combat:{},skill:{name:'合击',target:'one',multiplier:1.65,rageCost:4}}));
@@ -286,6 +287,6 @@ function simulate(player,enemies,maxRounds=20){
   return {win,log,playerAlive:living(player).length,enemyAlive:living(enemies).length};
 }
 
-export function runChapterBattle(state){const power=chapterEnemyPower(state.player.chapter),rating=chapterEnemyRating(state.player.chapter);return {...simulate(playerTeam(state),makeEnemyTeam(power,'元兵')),enemyPower:rating};}
-export function runTowerBattle(state){const floor=state.tower.highest+1,power=towerEnemyPower(floor),rating=towerEnemyRating(floor);return {...simulate(playerTeam(state),makeEnemyTeam(power,'守塔人')),enemyPower:rating,floor};}
-export function runAncientTombBattle(state,floor,power){return {...simulate(playerTeam(state),makeEnemyTeam(power,'古墓守卫')),enemyPower:power,floor};}
+export function runChapterBattle(state){const power=chapterEnemyPower(state.player.chapter),rating=chapterEnemyRating(state.player.chapter);return {...simulate(playerTeam(state),makeEnemyTeam(power,'元兵')),enemyPower:rating*ENEMY_POWER_MULTIPLIER};}
+export function runTowerBattle(state){const floor=state.tower.highest+1,power=towerEnemyPower(floor),rating=towerEnemyRating(floor);return {...simulate(playerTeam(state),makeEnemyTeam(power,'守塔人')),enemyPower:rating*ENEMY_POWER_MULTIPLIER,floor};}
+export function runAncientTombBattle(state,floor,power){return {...simulate(playerTeam(state),makeEnemyTeam(power,'古墓守卫')),enemyPower:power*ENEMY_POWER_MULTIPLIER,floor};}

@@ -57,16 +57,24 @@ function subHead(title,sub){
   return `<div class="subpage-head"><button class="back-link" type="button" data-jh-back>‹ 江湖</button><div><span class="eyebrow">江湖</span><h2>${title}</h2><small>${sub}</small></div></div>`;
 }
 
+function subpageShell(inner){return `<div class="jh-subpage-backdrop" data-jh-backdrop><div class="jh-subpage-panel">${inner}</div></div>`;}
+
 function renderMainlinePanel(){
   const s=readSave(),p=s.player||{},chapter=Number(p.chapter||1),stamina=Number(p.stamina||0);
   pageEl.dataset.more='mainline-panel';
-  pageEl.innerHTML=`${subHead('主线','剧情推进 / 连续速战')}<section class="card featured-card jh-action-card"><div class="section-title"><h3>第${chapter}幕</h3><small>体力 ${fmt(stamina)}</small></div><div class="notice">首次挑战不消耗体力；连续速战5次共消耗25体力。</div><div class="action-row jh-big-actions"><button class="btn btn-primary" data-action="chapter">挑战第${chapter}幕</button><button class="btn btn-gold" data-action="quick" ${stamina<25?'disabled':''}>速战5次 · 25体力</button></div></section>`;
+  pageEl.innerHTML=subpageShell(`${subHead('主线','剧情推进 / 连续速战')}<section class="card featured-card jh-action-card"><div class="section-title"><h3>第${chapter}幕</h3><small>体力 ${fmt(stamina)}</small></div><div class="notice">首次挑战不消耗体力；连续速战5次共消耗25体力。</div><div class="action-row jh-big-actions"><button class="btn btn-primary" data-action="chapter">挑战第${chapter}幕</button><button class="btn btn-gold" data-action="quick" ${stamina<25?'disabled':''}>速战5次 · 25体力</button></div></section>`);
 }
 
 function renderTowerPanel(){
   const s=readSave(),highest=Number(s.tower?.highest||0),next=highest+1;
   pageEl.dataset.more='tower-panel';
-  pageEl.innerHTML=`${subHead('少林千宝塔','永久爬塔 / 经脉资源')}<section class="card featured-card jh-action-card"><span class="tag">永久爬塔</span><div class="section-title" style="margin-top:8px"><h3>已通关 ${fmt(highest)} 层</h3><small>下一层 ${fmt(next)}</small></div><div class="notice">按当前千宝塔规则结算经脉丹、突破丹及高层节点奖励。</div><button class="btn btn-primary btn-block jh-big-button" data-action="tower">挑战第${fmt(next)}层</button></section>`;
+  pageEl.innerHTML=subpageShell(`${subHead('少林千宝塔','永久爬塔 / 经脉资源')}<section class="card featured-card jh-action-card"><span class="tag">永久爬塔</span><div class="section-title" style="margin-top:8px"><h3>已通关 ${fmt(highest)} 层</h3><small>下一层 ${fmt(next)}</small></div><div class="notice">按当前千宝塔规则结算经脉丹、突破丹及高层节点奖励。</div><button class="btn btn-primary btn-block jh-big-button" data-action="tower">挑战第${fmt(next)}层</button></section>`);
+}
+
+function leaveSubpage(){
+  if(!activePanel)return;
+  activePanel=null;
+  bottomMore?.click();
 }
 
 function applyNavigationCleanup(){
@@ -78,12 +86,21 @@ function applyNavigationCleanup(){
 }
 
 pageEl.addEventListener('click',e=>{
+  if(e.target.closest('[data-jh-backdrop]')&&!e.target.closest('.jh-subpage-panel')){leaveSubpage();return;}
   const btn=e.target.closest('button');
   if(!btn)return;
   if(btn.dataset.jhPanel==='mainline'){activePanel='mainline';renderMainlinePanel();return;}
   if(btn.dataset.jhPanel==='tower'){activePanel='tower';renderTowerPanel();return;}
-  if(btn.dataset.jhBack!==undefined){activePanel=null;bottomMore?.click();}
+  if(btn.dataset.jhBack!==undefined){leaveSubpage();}
 });
+
+document.addEventListener('click',e=>{
+  if(!activePanel)return;
+  if(e.target.closest('.jh-subpage-panel'))return;
+  if(e.target.closest('.bottom-nav'))return;
+  if(e.target.closest('[data-jh-backdrop]'))return;
+  if(e.target.closest('.topbar')||e.target.closest('.resource-bar'))leaveSubpage();
+},true);
 
 document.querySelector('.bottom-nav')?.addEventListener('click',e=>{
   const btn=e.target.closest('[data-page]');

@@ -58,7 +58,6 @@ function bagSection(title,items,empty='暂无物品'){
 function renderBackpack(){
   if(pageEl.dataset.page!=='challenge')return;
   const s=liveState(),p=s.player||{};
-  pageEl.dataset.bagRendered='1';
   const core=[
     bagItem('侠客经验',p.heroExp||0,'侠客升级'),bagItem('侠客信物',p.heroTokens||0,'客栈兑换'),bagItem('传奇招募令',p.legendTokens||0,'传奇招募'),
     bagItem('经脉丹',p.meridianPills||0,'经脉冲穴'),bagItem('突破丹',p.breakthroughPills||0,'经脉突破'),bagItem('功法帖',p.kungfuTickets||0,'藏经阁抽取'),
@@ -181,7 +180,8 @@ function applyNavigationCleanup(){
   if(bottomChallenge){const span=bottomChallenge.querySelector('span');if(span&&span.textContent!=='背包')span.textContent='背包';}
   removeLegacyHomeEntries();
   if(pageEl.dataset.page==='challenge'){
-    if(pageEl.dataset.bagRendered!=='1')renderBackpack();
+    const title=pageEl.querySelector(':scope > .section-title h2')?.textContent?.trim();
+    if(title!=='背包')renderBackpack();
     return;
   }
   if(pageEl.dataset.page==='more'&&pageEl.dataset.more==='hub'&&activePanel){renderActivePanel();return;}

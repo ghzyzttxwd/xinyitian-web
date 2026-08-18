@@ -10,3 +10,104 @@
 .battle-control-rail [data-rail-close]{background:#6f2d27;border-color:#a75046;color:#fff0df}
 .battle-control-rail button:active{transform:translateY(1px);filter:brightness(1.15)}
 @media(min-width:700px){#battleDialog.battle-overlay-open{align-items:center!important;padding:24px!important}#battleDialog.battle-overlay-open #battleDialogBody{border-radius:16px!important;max-height:90dvh!important}.battle-control-rail{top:18px;right:24px}}
+
+/* V0.24.1: full-screen battle shell.
+   The external rail stays in DOM for easy rollback, but is hidden. Stable
+   in-panel close / speed / skip / battle-log controls remain untouched. */
+#battleControlRail{display:none!important}
+html.battle-overlay-active,body.battle-overlay-active{overflow:hidden!important}
+#battleDialog.battle-overlay-open[open]{
+  align-items:stretch!important;
+  justify-content:stretch!important;
+  width:100vw!important;
+  height:100dvh!important;
+  padding:0!important;
+  background:#0b0907!important;
+  overflow:hidden!important;
+}
+#battleDialog.battle-overlay-open #battleDialogBody{
+  width:100vw!important;
+  max-width:none!important;
+  height:100dvh!important;
+  max-height:none!important;
+  margin:0!important;
+  overflow:auto!important;
+  overscroll-behavior:contain;
+  background:#12100d!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+#battleDialog.battle-overlay-open .modal-inner{
+  min-height:100dvh;
+  padding:max(7px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom))!important;
+  display:flex;
+  flex-direction:column;
+}
+#battleDialog.battle-overlay-open .modal-head{
+  flex:0 0 auto;
+  min-height:45px;
+  margin:0 0 6px!important;
+  padding:0 2px;
+}
+#battleDialog.battle-overlay-open .modal-head h3{font-size:16px!important}
+#battleDialog.battle-overlay-open [data-close-dialog]{min-width:68px;min-height:40px!important;padding:7px 11px!important}
+#battleDialog.battle-overlay-open .battle-visual-stage{
+  flex:0 0 auto;
+  width:100%!important;
+  height:calc(100dvh - 64px)!important;
+  min-height:calc(100dvh - 64px)!important;
+  max-height:none!important;
+  margin:0!important;
+  border-radius:8px!important;
+}
+#battleDialog.battle-overlay-open .battle-v240 .bv-field{
+  height:calc(100% - 78px)!important;
+  min-height:0!important;
+  padding-top:8px!important;
+  padding-bottom:38px!important;
+}
+#battleDialog.battle-overlay-open .battle-v240 .bv-team{
+  height:100%!important;
+  grid-template-rows:repeat(3,minmax(86px,1fr))!important;
+  align-content:stretch!important;
+}
+#battleDialog.battle-overlay-open .battle-v240 .bv-fighter{
+  justify-content:center!important;
+}
+#battleDialog.battle-overlay-open .bv-final,
+#battleDialog.battle-overlay-open .bv-log-details{
+  flex:0 0 auto;
+}
+#battleDialog.battle-overlay-open .bv-log-details{margin-bottom:10px}
+
+@media(max-width:430px){
+  #battleDialog.battle-overlay-open .modal-inner{padding-left:5px!important;padding-right:5px!important}
+  #battleDialog.battle-overlay-open .battle-visual-stage{
+    height:calc(100dvh - 61px)!important;
+    min-height:calc(100dvh - 61px)!important;
+    border-radius:5px!important;
+  }
+  #battleDialog.battle-overlay-open .battle-v240 .bv-field{
+    height:calc(100% - 76px)!important;
+    padding:5px 1px 37px!important;
+  }
+  #battleDialog.battle-overlay-open .battle-v240 .bv-team{
+    grid-template-rows:repeat(3,minmax(82px,1fr))!important;
+    gap:1px 0!important;
+  }
+  #battleDialog.battle-overlay-open .battle-v240 .bv-portrait{
+    width:68px!important;
+    height:78px!important;
+  }
+  #battleDialog.battle-overlay-open .battle-v240 .bv-bars,
+  #battleDialog.battle-overlay-open .battle-v240 .bv-hp,
+  #battleDialog.battle-overlay-open .battle-v240 .bv-rage{width:68px!important}
+}
+
+@media(min-width:700px){
+  #battleDialog.battle-overlay-open{padding:0!important;align-items:stretch!important}
+  #battleDialog.battle-overlay-open #battleDialogBody{max-height:none!important;border-radius:0!important}
+  #battleDialog.battle-overlay-open .modal-inner{max-width:900px;width:100%;margin:0 auto}
+  #battleDialog.battle-overlay-open .battle-visual-stage{height:calc(100dvh - 68px)!important;min-height:calc(100dvh - 68px)!important}
+}

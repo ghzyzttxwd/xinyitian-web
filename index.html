@@ -8,16 +8,19 @@
   <script>
   (()=>{
     const RESET_KEY='xyt-cache-reset-0236';
-    if('serviceWorker' in navigator && !sessionStorage.getItem(RESET_KEY)){
-      sessionStorage.setItem(RESET_KEY,'1');
-      Promise.all([
-        navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(r=>String(r.scope||'').includes('/xinyitian-web/')).map(r=>r.unregister()))),
-        ('caches' in window)?caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('xinyitian-')).map(k=>caches.delete(k)))):Promise.resolve()
-      ]).then(()=>{
-        const u=new URL(location.href);
-        u.searchParams.set('_xyt','0236');
-        location.replace(u.href);
-      }).catch(()=>{});
+    if('serviceWorker' in navigator){
+      if(!sessionStorage.getItem(RESET_KEY)){
+        sessionStorage.setItem(RESET_KEY,'1');
+        Promise.all([
+          navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(r=>String(r.scope||'').includes('/xinyitian-web/')).map(r=>r.unregister()))),
+          ('caches' in window)?caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('xinyitian-')).map(k=>caches.delete(k)))):Promise.resolve()
+        ]).then(()=>{
+          const u=new URL(location.href);
+          u.searchParams.set('_xyt','0236');
+          location.replace(u.href);
+        }).catch(()=>{});
+      }
+      try{navigator.serviceWorker.register=()=>Promise.resolve({});}catch{}
     }
   })();
   </script>

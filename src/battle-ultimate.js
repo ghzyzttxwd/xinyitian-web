@@ -14,18 +14,19 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function modeFor(actor,skill){if(TAO_SKILLS.test(skill)||actor==='张三丰'||actor==='张无忌')return 'taiji';if(FIRE_SKILLS.test(skill)||actor==='小昭')return 'flame';return 'sword';}
 function fighterFor(stage,name){try{return stage.querySelector(`.bv-fighter[data-fighter-name="${CSS.escape(name)}"]`);}catch{return null;}}
 function portraitBackground(fighter){const p=fighter?.querySelector('.bv-portrait');if(!p)return '';const cs=getComputedStyle(p);return cs.backgroundImage&&cs.backgroundImage!=='none'?cs.backgroundImage:'';}
+function battleSpeed(stage){return stage.querySelector('[data-bv-speed]')?.textContent?.includes('2')?2:1;}
 
 function playCutin(stage,actor,skill){
   const fighter=fighterFor(stage,actor);
   if(!fighter||!fighter.classList.contains('player'))return;
-  const now=Date.now(),key=`${actor}|${skill}`;if(key===lastKey&&now-lastAt<400)return;lastKey=key;lastAt=now;
+  const now=Date.now(),key=`${actor}|${skill}`;if(key===lastKey&&now-lastAt<360)return;lastKey=key;lastAt=now;
   stage.querySelector('.bu-overlay')?.remove();
 
   const mode=modeFor(actor,skill),src=CUTIN_IMAGES[actor]||'';
-  const bg=portraitBackground(fighter);
+  const bg=portraitBackground(fighter),safeBg=(bg||'linear-gradient(160deg,#72552b,#22160f)').replaceAll('"',"'");
   const art=src
     ? `<img class="bu-figure" src="${src}" alt="">`
-    : `<div class="bu-figure bu-figure-bg" style="background-image:${bg||'linear-gradient(160deg,#72552b,#22160f)'}"><span>${esc(actor.slice(0,1))}</span></div>`;
+    : `<div class="bu-figure bu-figure-bg" style="background-image:${safeBg}"><span>${esc(actor.slice(0,1))}</span></div>`;
   const overlay=document.createElement('div');
   overlay.className=`bu-overlay bu-${mode}`;
   overlay.innerHTML=`
@@ -37,8 +38,10 @@ function playCutin(stage,actor,skill){
     <div class="bu-ring bu-ring-1"></div><div class="bu-ring bu-ring-2"></div>
     <div class="bu-flash"></div>`;
   stage.appendChild(overlay);
-  setTimeout(()=>overlay.classList.add('leave'),560);
-  setTimeout(()=>overlay.remove(),820);
+  const speed=battleSpeed(stage);
+  overlay.style.setProperty('--bu-speed',String(speed));
+  setTimeout(()=>overlay.classList.add('leave'),560/speed);
+  setTimeout(()=>overlay.remove(),820/speed);
 }
 
 function bindBanner(){

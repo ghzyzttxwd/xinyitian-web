@@ -94,7 +94,13 @@ function buildController(stage,events,players,enemies,finalBox,outcome,reward){
     if(!source||!target)return;
     const s=source.getBoundingClientRect(),t=target.getBoundingClientRect(),root=stage.getBoundingClientRect();
     const ghost=source.cloneNode(true);
-    ghost.classList.add('bv-dash-ghost');
+    ghost.classList.add('bv-dash-ghost',actorEl.classList.contains('enemy')?'enemy-ghost':'player-ghost');
+    const sourceStyle=getComputedStyle(source);
+    ghost.style.background=sourceStyle.background;
+    ghost.style.backgroundImage=sourceStyle.backgroundImage;
+    ghost.style.backgroundPosition=sourceStyle.backgroundPosition;
+    ghost.style.backgroundSize=sourceStyle.backgroundSize;
+    ghost.style.backgroundRepeat=sourceStyle.backgroundRepeat;
     ghost.style.left=`${s.left-root.left}px`;
     ghost.style.top=`${s.top-root.top}px`;
     ghost.style.width=`${s.width}px`;
@@ -157,7 +163,7 @@ function buildController(stage,events,players,enemies,finalBox,outcome,reward){
   function delayFor(event){if(event.type==='round')return 330/speed;if(event.type==='action')return (event.normal?650:850)/speed;return 420/speed;}
   function schedule(){if(finished)return;if(index>=events.length)return finish();const event=events[index++];applyEvent(event);timer=setTimeout(schedule,delayFor(event));}
   function finish(){if(finished)return;finished=true;if(timer)clearTimeout(timer);const win=outcome.classList.contains('battle-win');const losing=win?enemies:players;for(const f of losing){f.alive=false;f.hpPct=0;sync(f);}if(roundEl)roundEl.textContent=win?'战斗胜利':'战斗失败';setTicker(win?'胜利！奖励已经结算。':'战败，可调整阵容与养成后再试。');finalBox.hidden=false;finalBox.classList.add('show');stage.querySelector('[data-bv-skip]')?.setAttribute('disabled','');}
-  function skip(){while(index<events.length)applyEvent(events[index++]);finish();}
+  function skip(){index=events.length;finish();}
   function toggleSpeed(){speed=speed===1?2:1;const btn=stage.querySelector('[data-bv-speed]');if(btn)btn.textContent=`${speed}×`;}
   function stop(){if(timer)clearTimeout(timer);finished=true;for(const ghost of stage.querySelectorAll('.bv-dash-ghost,.bv-impact,.bv-skill-wave,.bv-skill-aura'))ghost.remove();}
   return {start(){setTimeout(schedule,180);},skip,toggleSpeed,stop};

@@ -3,12 +3,11 @@ import { RED_KUNGFU } from './kungfu.js';
 import { saveState } from './state.js';
 import { bumpDaily } from './tasks.js';
 
-// V0.24.3: interaction/data corrections kept outside app.js so the stable
+// V0.24.4: interaction/data corrections kept outside app.js so the stable
 // battle shell and controls stay untouched.
 
-// Original-guide correction: Xiao Zhao's ultimate is single-target and gives
-// 2 rage to the allied unit with the highest attack. The exact damage
-// multiplier has not been confirmed, so 1.0 is only a compatibility value.
+// Xiao Zhao: single-target ultimate, then +2 rage to the allied unit with
+// the highest attack. Exact original damage multiplier is still unconfirmed.
 if (HEROES.xiaozhao) {
   HEROES.xiaozhao.skill = {
     name: '轻罗飞花',
@@ -22,6 +21,16 @@ if (HEROES.xiaozhao) {
 
 const page = document.querySelector('#page');
 const fmt = n => Number(n || 0).toLocaleString('zh-CN');
+const BASE_RED_EXCHANGE_COST = 200;
+const BASE_RED_EXCHANGE_IDS = [
+  '104001', // 真武七截剑
+  '104201', // 金刚不坏
+  '104301', // 纯阳无极功
+  '104401', // 金刚禅指功
+  '104501', // 移形换影
+  '104601', // 摧坚神爪
+  '104701', // 乾坤化劲
+];
 
 function patchHeroDetail(){
   if (!page || page.dataset.page !== 'heroes') return;
@@ -49,6 +58,18 @@ function patchHeroDetail(){
   }
 }
 
+function exchangeRows(state){
+  const fragments = Number(state?.kungfu?.fragments || 0);
+  return BASE_RED_EXCHANGE_IDS.map(id => {
+    const k = RED_KUNGFU[id];
+    if (!k) return '';
+    const rec = state?.kungfu?.red?.[id] || { level:0, copies:0 };
+    const own = Number(rec.level || 0) > 0;
+    const stock = own ? `Lv.${rec.level} · 备用本体 ${fmt(rec.copies || 0)}` : '尚未获得';
+    return `<div class="list-row"><div><b class="rarity-6">${k.name}</b><div class="hero-meta">${stock}</div></div><button class="btn ${fragments>=BASE_RED_EXCHANGE_COST?'btn-gold':''}" data-fragment-exchange="${id}" ${fragments>=BASE_RED_EXCHANGE_COST?'':'disabled'}>${BASE_RED_EXCHANGE_COST}残页 · 兑换1本</button></div>`;
+  }).join('');
+}
+
 function patchKungfuPanel(){
   if (!page || page.dataset.page !== 'growth') return;
   const cards = [...page.querySelectorAll(':scope > section.card')];
@@ -66,7 +87,7 @@ function patchKungfuPanel(){
     shop.className = 'card';
     drawCard.insertAdjacentElement('afterend', shop);
   }
-  shop.innerHTML = `<div class="section-title"><h3>功法商店</h3><small>功法残页 ${fmt(state?.kungfu?.fragments || 0)}</small></div><div class="notice">原版功法残页在集市/功法商店兑换功法。当前单机精简版尚未接入橙色功法，所以残页先正常累计保留；这里暂不乱设红色功法兑换价。后续若补橙色功法，再在这里开放正式兑换。</div>`;
+  shop.innerHTML = `<div class="section-title"><h3>功法商店</h3><small>功法残页 ${fmt(state?.kungfu?.fragments || 0)}</small></div><div class="notice">200张功法残页兑换1本基础红色功法。只开放7门基础属性型红功法；龙爪手、九阳真经、金刚伏魔功、混元一气功、九阴真经等机制型/稀有红功法不能用残页兑换。橙色功法不接入本单机版。</div>${exchangeRows(state)}`;
 }
 
 function patchRenderedPage(){
@@ -138,8 +159,38 @@ function drawKungfu(times){
   refreshKungfuView(keepY);
 }
 
+function exchangeBaseRedKungfu(id){
+  if (!BASE_RED_EXCHANGE_IDS.includes(id)) return;
+  const state = globalThis.__XYT_STATE__;
+  const k = RED_KUNGFU[id];
+  if (!state || !k) return;
+  const fragments = Number(state.kungfu?.fragments || 0);
+  if (fragments < BASE_RED_EXCHANGE_COST) {
+    alert(`功法残页不足，需要${BASE_RED_EXCHANGE_COST}张。`);
+    return;
+  }
+  const keepY = window.scrollY;
+  state.kungfu.fragments = fragments - BASE_RED_EXCHANGE_COST;
+  addKungfuCopy(state,id,1);
+  saveState(state);
+  alert(`功法商店：消耗${BASE_RED_EXCHANGE_COST}张功法残页，获得【${k.name}】×1。`);
+  refreshKungfuView(keepY);
+}
+
 document.addEventListener('click', event => {
-  const btn = event.target instanceof Element ? event.target.closest('button[data-action]') : null;
+  const target = event.target instanceof Element ? event.target : null;
+  if (!target) return;
+
+  const exchangeBtn = target.closest('button[data-fragment-exchange]');
+  if (exchangeBtn) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    event.stopPropagation();
+    exchangeBaseRedKungfu(exchangeBtn.dataset.fragmentExchange);
+    return;
+  }
+
+  const btn = target.closest('button[data-action]');
   if (!btn) return;
   const action = btn.dataset.action;
   if (action !== 'drawKungfu1' && action !== 'drawKungfu5') return;

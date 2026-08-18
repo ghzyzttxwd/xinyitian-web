@@ -1,4 +1,5 @@
 import { towerPowerRating } from './power.js';
+import { originalPlayerExpToNext, originalChapterRequiredLevel } from './progression.js';
 
 export const SAVE_KEY = 'xinyitian_single_v1';
 export const SAVE_VERSION = 1;
@@ -152,12 +153,11 @@ export const HEROES = {
 export const INITIAL_HERO_IDS = ['player', 'wuji'];
 
 export function requiredPlayerLevelForChapter(chapter) {
-  if (chapter <= 10) return Math.max(1, chapter);
-  return Math.min(240, chapter + 10);
+  return originalChapterRequiredLevel(chapter);
 }
 
 export function playerExpToNext(level) {
-  return Math.round(380 + Math.pow(level, 1.35) * 82);
+  return originalPlayerExpToNext(level);
 }
 
 export function chapterEnemyPower(chapter) {

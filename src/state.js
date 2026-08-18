@@ -103,22 +103,27 @@ function mergeDefaults(saved, fresh) {
   return out;
 }
 
+function exposeState(state){
+  try{globalThis.__XYT_STATE__=state;}catch{}
+  return state;
+}
+
 export function loadState() {
   const fresh = createInitialState();
   try {
     const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return fresh;
+    if (!raw) return exposeState(fresh);
     const parsed = JSON.parse(raw);
     const state = mergeDefaults(parsed, fresh);
     normalizeHeroKungfuStates(state); normalizeDaily(state); recoverStamina(state); recoverInnerPower(state); recalcVip(state);
-    return state;
+    return exposeState(state);
   } catch (err) {
     console.warn('存档读取失败，使用新档', err);
-    return fresh;
+    return exposeState(fresh);
   }
 }
 
-export function saveState(state) { state.updatedAt = Date.now(); localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
+export function saveState(state) { state.updatedAt = Date.now(); exposeState(state); localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
 
 export function normalizeDaily(state) {
   const today = localDateKey();
@@ -233,4 +238,4 @@ export async function importSaveFile(file) {
   const state=mergeDefaults(parsed,createInitialState()); normalizeHeroKungfuStates(state); normalizeDaily(state); recoverStamina(state); recoverInnerPower(state); recalcVip(state); saveState(state); return state;
 }
 
-export function resetSave() { localStorage.removeItem(SAVE_KEY); return createInitialState(); }
+export function resetSave() { localStorage.removeItem(SAVE_KEY); return exposeState(createInitialState()); }

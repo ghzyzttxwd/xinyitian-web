@@ -10,6 +10,7 @@ import { calibratedHeroPower } from './power.js';
 import { createVipExtras } from './vip.js';
 import { baseTalentForHero } from './meridians.js';
 import { storyHeroProfile } from './story.js';
+import { heroLevelFlatStats } from './levelstats.js';
 
 function newHeroState(id) {
   return {
@@ -190,12 +191,14 @@ export function heroTalent(state, heroId) {
 export function heroStats(state, heroId) {
   const tpl = storyHeroProfile(state,heroId,HEROES[heroId]), h = state.heroes[heroId];
   if (!tpl || !h) return null;
-  const growth = 1 + (Math.max(1, h.level) - 1) * 0.085;
+  const lv = heroLevelFlatStats(h.level);
   const meridian = h.meridian || {}, k = heroKungfuBonuses(state, heroId), w=equippedWeaponBonuses(state,heroId), a=awakeningBaseMultiplier(state,heroId), wd=wudaoBonuses(state,heroId);
   const ip = innerPowerBonuses(heroId,h.innerPower,heroTalent(state,heroId));
-  const rawAtk=tpl.base.atk*a.atk*growth+Number(meridian.atk||0)+k.atk+ip.flatAtk+w.atk;
-  const rawDef=tpl.base.def*a.def*growth+Number(meridian.def||0)+k.def+ip.flatDef+w.def;
-  const rawHp=tpl.base.hp*a.hp*growth+Number(meridian.hp||0)+k.hp+ip.flatHp+w.hp;
+  // v580：侠客模板三维 + shengjisx等级固定增量，再叠加经脉/功法/内力/神兵。
+  // 旧版网页错误地把等级写成每级8.5%的乘法增长，已废弃。
+  const rawAtk=tpl.base.atk*a.atk+lv.atk+Number(meridian.atk||0)+k.atk+ip.flatAtk+w.atk;
+  const rawDef=tpl.base.def*a.def+lv.def+Number(meridian.def||0)+k.def+ip.flatDef+w.def;
+  const rawHp=tpl.base.hp*a.hp+lv.hp+Number(meridian.hp||0)+k.hp+ip.flatHp+w.hp;
   return {
     atk: Math.round(rawAtk*(1+ip.atkPct/100)*(1+wd.atkPct/100)*(1+Number(w.atkPct||0)/100)),
     def: Math.round(rawDef*(1+ip.defPct/100)*(1+wd.defPct/100)*(1+Number(w.defPct||0)/100)),
@@ -207,7 +210,7 @@ export function heroStats(state, heroId) {
 }
 
 export function heroPower(state, heroId) {
-  const s = heroStats(state, heroId), tpl=HEROES[heroId]; if (!s||!tpl) return 0;
+  const s = heroStats(state, heroId), tpl=storyHeroProfile(state,heroId,HEROES[heroId]); if (!s||!tpl) return 0;
   const k = heroKungfuBonuses(state, heroId), w=equippedWeaponBonuses(state,heroId);
   return calibratedHeroPower(heroId,tpl.base,s,{kungfuPower:k.power,weaponPower:w.power});
 }

@@ -33,7 +33,7 @@ function animateWuji(stage){
   const target=enemyCenter(stage);
   if(!portrait||!target)return;
 
-  const now=Date.now();if(now-lastAt<360)return;lastAt=now;
+  const now=Date.now();if(now-lastAt<80)return;lastAt=now;
   removeFx(stage);
   stage.classList.add('wuji2d-active');
 
@@ -77,6 +77,7 @@ function animateWuji(stage){
   wave.style.left=`${p.x}px`;wave.style.top=`${p.y}px`;
   wave.style.setProperty('--dx',`${dx}px`);wave.style.setProperty('--dy',`${dy}px`);
   wave.style.setProperty('--dur',`${ms(360)}ms`);
+  wave.style.animationDelay=`${ms(80)}ms`;
   stage.appendChild(wave);
 
   // 命中时敌阵整体震退，不再只是每张卡片自己闪一下。

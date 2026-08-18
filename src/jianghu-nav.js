@@ -169,7 +169,8 @@ function patchKungfuTicketButtons(){
     const btn=pageEl.querySelector(`[data-action="${action}"]`);if(!btn)continue;
     const used=Math.min(n,tickets),cost=(n-used)*300;
     btn.disabled=Number(p.gems||0)<cost;
-    btn.textContent=used===n?`抽${n}次 · 功法帖${used}`:used?`抽${n}次 · 功法帖${used} + ${cost}元宝`:`抽${n}次 · ${cost}元宝`;
+    const label=used===n?`抽${n}次 · 功法帖${used}`:used?`抽${n}次 · 功法帖${used} + ${cost}元宝`:`抽${n}次 · ${cost}元宝`;
+    if(btn.textContent!==label)btn.textContent=label;
   }
 }
 function patchSettingsVersion(){

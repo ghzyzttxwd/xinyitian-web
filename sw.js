@@ -1,4 +1,4 @@
-const CACHE = 'xinyitian-v0.21.6';
+const CACHE = 'xinyitian-v0.21.7';
 const ASSETS = [
   './',
   './index.html',

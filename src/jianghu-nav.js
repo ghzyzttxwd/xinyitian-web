@@ -16,6 +16,9 @@ const SAVE_KEY='xinyitian_single_v1';
 let activePanel=null;
 let bagSection=null;
 let bagChoice=null;
+let specialChoiceItem='';
+let specialChoiceQty=1;
+let bagNotice='';
 
 const MALL_GOODS=[
   {id:'heroTokens',name:'侠客信物',desc:'客栈兑换侠客招募令',amount:1,price:50,level:10,source:'3008521'},
@@ -104,7 +107,13 @@ function packButton(label,qty,desc,attrs,button='打开'){
 }
 function kungfuChoiceHtml(pool,kind){const valid=pool.filter(id=>RED_KUNGFU[id]);return `<div class="pack-choice-grid">${valid.map(id=>`<button class="pack-choice" type="button" data-pack-kungfu="${id}" data-pack-kind="${kind}"><b>${esc(RED_KUNGFU[id].name)}</b><small>${esc(RED_KUNGFU[id].desc1||'获得1本')}</small></button>`).join('')}</div>`;}
 function soulChoiceHtml(){return `<div class="pack-choice-grid">${Object.entries(AWAKENINGS).map(([id,c])=>`<button class="pack-choice" type="button" data-pack-soul="${id}"><b>${esc(c.godName)}</b><small>魂石碎片 +${SOUL_SHARD_PACK}</small></button>`).join('')}</div>`;}
-function specialChoiceHtml(){return `<div class="pack-choice-grid">${SPECIAL_EXCHANGE_ITEMS.map(x=>`<button class="pack-choice" type="button" data-pack-special="${esc(x.item)}"><b>${esc(x.item)}</b><small>兑换物 +${SPECIAL_ITEM_PACK_SIZE}</small></button>`).join('')}</div>`;}
+function specialChoiceHtml(s){
+  const max=Math.max(1,Number(s.vipExtras?.specialChoicePacks||0));
+  if(!SPECIAL_EXCHANGE_ITEMS.some(x=>x.item===specialChoiceItem))specialChoiceItem=SPECIAL_EXCHANGE_ITEMS[0]?.item||'';
+  specialChoiceQty=Math.max(1,Math.min(max,Number(specialChoiceQty)||1));
+  const options=SPECIAL_EXCHANGE_ITEMS.map(x=>`<button class="pack-choice ${specialChoiceItem===x.item?'selected':''}" type="button" data-pack-special-select="${esc(x.item)}"><b>${esc(x.item)}</b><small>每包 +${SPECIAL_ITEM_PACK_SIZE}</small></button>`).join('');
+  const total=specialChoiceQty*SPECIAL_ITEM_PACK_SIZE;
+  return `<div class="pack-choice-grid">${options}</div><div class="special-batch-box"><div class="special-batch-head"><div><b>已选：${esc(specialChoiceItem||'请选择')}</b><small>持有自选包 ${fmt(max)} 个</small></div><strong><span data-special-qty-label>${fmt(specialChoiceQty)}</span>包</strong></div><input class="special-batch-range" type="range" min="1" max="${max}" value="${specialChoiceQty}" step="1" data-special-pack-range><div class="special-batch-actions"><button class="btn" type="button" data-special-pack-minus>−1</button><button class="btn" type="button" data-special-pack-plus>+1</button><button class="btn" type="button" data-special-pack-all>全部</button></div><div class="notice special-batch-summary">消耗 <b data-special-cost>${fmt(specialChoiceQty)}</b> 个自选包 → 获得 <b data-special-gain>${fmt(total)}</b> 个${esc(specialChoiceItem||'兑换物')}</div><button class="btn btn-gold btn-block" type="button" data-confirm-special-pack ${specialChoiceItem?'':'disabled'}>确认兑换</button></div>`; }
 function renderPackBag(s){
   const packs=ensurePackState(s),items=[];
   if(packs.kungfuRandom>0)items.push(packButton('红品功法随机包',packs.kungfuRandom,'原版7门属性红功法中随机获得1本','data-open-pack="kungfuRandom"'));
@@ -119,7 +128,7 @@ function renderPackBag(s){
   if(bagChoice==='kungfuChoiceHigh')chooser=`<section class="card pack-choice-card"><div class="section-title"><h3>选择一本红品功法</h3><button class="btn" data-cancel-pack>取消</button></div>${kungfuChoiceHtml(ORIGINAL_KUNGFU_BOX_POOL,'kungfuChoiceHigh')}</section>`;
   if(bagChoice==='kungfuChoiceLow')chooser=`<section class="card pack-choice-card"><div class="section-title"><h3>选择一本红品功法</h3><button class="btn" data-cancel-pack>取消</button></div>${kungfuChoiceHtml(ORIGINAL_KUNGFU_LOW_POOL,'kungfuChoiceLow')}</section>`;
   if(bagChoice==='soul')chooser=`<section class="card pack-choice-card"><div class="section-title"><h3>选择魂石碎片</h3><button class="btn" data-cancel-pack>取消</button></div>${soulChoiceHtml()}</section>`;
-  if(bagChoice==='special')chooser=`<section class="card pack-choice-card"><div class="section-title"><h3>选择奇侠兑换物</h3><button class="btn" data-cancel-pack>取消</button></div>${specialChoiceHtml()}</section>`;
+  if(bagChoice==='special')chooser=`<section class="card pack-choice-card"><div class="section-title"><h3>选择奇侠兑换物</h3><button class="btn" data-cancel-pack>取消</button></div>${bagNotice?`<div class="battle-win bag-inline-notice">${esc(bagNotice)}</div>`:''}${specialChoiceHtml(s)}</section>`;
   return `${chooser}${bagList(items,'当前没有可开启礼包或奇侠兑换物')}`;
 }
 function renderBagSection(key){
@@ -141,7 +150,24 @@ function openRandomPack(kind){
 }
 function chooseKungfuPack(kind,id){const s=liveState(),packs=ensurePackState(s),pool=kind==='kungfuChoiceLow'?ORIGINAL_KUNGFU_LOW_POOL:ORIGINAL_KUNGFU_BOX_POOL;if(Number(packs[kind]||0)<=0||!pool.includes(id)||!RED_KUNGFU[id])return;packs[kind]-=1;addKungfuCopy(s,id,1);bagChoice=null;saveAndSync(s);renderBagSection('packs');alert(`功法箱：获得【${RED_KUNGFU[id].name}】×1。`);}
 function chooseSoulPack(id){const s=liveState();if(!AWAKENINGS[id]||Number(s.awakening?.choicePacks||0)<=0)return;s.awakening.choicePacks-=1;s.awakening.fragments[id]=Number(s.awakening.fragments[id]||0)+SOUL_SHARD_PACK;bagChoice=null;saveAndSync(s);renderBagSection('packs');alert(`自选箱：${AWAKENINGS[id].godName}魂石碎片 +${SOUL_SHARD_PACK}。`);}
-function chooseSpecialPack(item){const s=liveState();if(!SPECIAL_EXCHANGE_ITEMS.some(x=>x.item===item)||Number(s.vipExtras?.specialChoicePacks||0)<=0)return;s.vipExtras.specialChoicePacks-=1;s.specials[item]=Number(s.specials[item]||0)+SPECIAL_ITEM_PACK_SIZE;bagChoice=null;saveAndSync(s);renderBagSection('packs');alert(`自选包：${item} +${SPECIAL_ITEM_PACK_SIZE}。`);}
+function updateSpecialBatchPreview(){
+  const s=liveState(),max=Math.max(1,Number(s.vipExtras?.specialChoicePacks||0)),range=pageEl.querySelector('[data-special-pack-range]');
+  if(range)specialChoiceQty=Math.max(1,Math.min(max,Number(range.value)||1));
+  const qty=Math.max(1,Math.min(max,Number(specialChoiceQty)||1)),gain=qty*SPECIAL_ITEM_PACK_SIZE;
+  specialChoiceQty=qty;
+  const q=pageEl.querySelector('[data-special-qty-label]'),c=pageEl.querySelector('[data-special-cost]'),g=pageEl.querySelector('[data-special-gain]');
+  if(q)q.textContent=fmt(qty);if(c)c.textContent=fmt(qty);if(g)g.textContent=fmt(gain);
+}
+function confirmSpecialPack(){
+  const s=liveState(),have=Math.max(0,Number(s.vipExtras?.specialChoicePacks||0)),item=specialChoiceItem,qty=Math.max(1,Math.min(have,Number(specialChoiceQty)||1));
+  if(!SPECIAL_EXCHANGE_ITEMS.some(x=>x.item===item)||have<=0)return;
+  s.vipExtras.specialChoicePacks-=qty;s.specials[item]=Number(s.specials[item]||0)+qty*SPECIAL_ITEM_PACK_SIZE;
+  bagNotice=`已使用${qty}个自选包：${item} +${qty*SPECIAL_ITEM_PACK_SIZE}`;
+  saveAndSync(s);
+  const left=Math.max(0,Number(s.vipExtras.specialChoicePacks||0));
+  if(left<=0){bagChoice=null;specialChoiceQty=1;}else specialChoiceQty=Math.min(qty,left);
+  renderBagSection('packs');
+}
 
 function hubTile(kind,seal,title,sub){const btn=document.createElement('button');btn.className='hub-tile jh-primary-tile';btn.type='button';btn.dataset.jhPanel=kind;btn.innerHTML=`<span class="hub-seal">${seal}</span><span class="hub-title">${title}</span><span class="hub-sub">${sub}</span><span class="hub-arrow">›</span>`;return btn;}
 function ensureTile(grid,kind,seal,title,sub){let tile=grid.querySelector(`[data-jh-panel="${kind}"]`);if(!tile){tile=hubTile(kind,seal,title,sub);grid.appendChild(tile);}return tile;}
@@ -162,7 +188,7 @@ function buyMallItem(id,qty=1){const s=liveState(),g=MALL_GOODS.find(x=>x.id===i
 function leaveSubpage(){if(!activePanel)return;activePanel=null;bottomMore?.click();}
 function renderActivePanel(){if(activePanel==='mainline')return renderMainlinePanel();if(activePanel==='tower')return renderTowerPanel();if(activePanel==='tomb')return renderTombPanel();if(activePanel==='mall')return renderMallPanel();}
 function patchKungfuTicketButtons(){if(pageEl.dataset.page!=='growth')return;const s=liveState(),p=s.player||{},tickets=Math.max(0,Number(p.kungfuTickets||0));for(const [action,n] of [['drawKungfu1',1],['drawKungfu5',5]]){const btn=pageEl.querySelector(`[data-action="${action}"]`);if(!btn)continue;const used=Math.min(n,tickets),cost=(n-used)*300;btn.disabled=Number(p.gems||0)<cost;const label=used===n?`抽${n}次 · 功法帖${used}`:used?`抽${n}次 · 功法帖${used} + ${cost}元宝`:`抽${n}次 · ${cost}元宝`;if(btn.textContent!==label)btn.textContent=label;}}
-function patchSettingsVersion(){if(pageEl.dataset.page!=='more'||pageEl.dataset.more!=='settings')return;pageEl.querySelectorAll('.hero-meta').forEach(el=>{if(/V0\.2[12](\.\d+)? · 手机优先/.test(el.textContent))el.textContent=el.textContent.replace(/V0\.2[12](\.\d+)?/,'V0.22.2');});}
+function patchSettingsVersion(){if(pageEl.dataset.page!=='more'||pageEl.dataset.more!=='settings')return;pageEl.querySelectorAll('.hero-meta').forEach(el=>{if(/V0\.2[12](\.\d+)? · 手机优先/.test(el.textContent))el.textContent=el.textContent.replace(/V0\.2[12](\.\d+)?/,'V0.22.3');});}
 function applyNavigationCleanup(){
   if(bottomChallenge){const span=bottomChallenge.querySelector('span');if(span&&span.textContent!=='背包')span.textContent='背包';}
   removeLegacyHomeEntries();
@@ -185,18 +211,23 @@ pageEl.addEventListener('click',e=>{
   if(e.target.closest('[data-jh-backdrop]')&&!e.target.closest('.jh-subpage-panel')){leaveSubpage();return;}
   const btn=e.target.closest('button');if(!btn)return;
   if(btn.dataset.bagSection){bagSection=btn.dataset.bagSection;bagChoice=null;renderBagSection(bagSection);window.scrollTo({top:0,behavior:'smooth'});return;}
-  if(btn.dataset.bagBack!==undefined){bagSection=null;bagChoice=null;renderBackpackHub();window.scrollTo({top:0,behavior:'smooth'});return;}
+  if(btn.dataset.bagBack!==undefined){bagSection=null;bagChoice=null;specialChoiceItem='';specialChoiceQty=1;bagNotice='';renderBackpackHub();window.scrollTo({top:0,behavior:'smooth'});return;}
   if(btn.dataset.openPack){openRandomPack(btn.dataset.openPack);return;}
-  if(btn.dataset.choosePack){bagChoice=btn.dataset.choosePack;renderBagSection('packs');return;}
-  if(btn.dataset.cancelPack!==undefined){bagChoice=null;renderBagSection('packs');return;}
+  if(btn.dataset.choosePack){bagChoice=btn.dataset.choosePack;bagNotice='';if(bagChoice==='special'){specialChoiceItem='';specialChoiceQty=1;}renderBagSection('packs');return;}
+  if(btn.dataset.cancelPack!==undefined){bagChoice=null;bagNotice='';renderBagSection('packs');return;}
   if(btn.dataset.packKungfu){chooseKungfuPack(btn.dataset.packKind,btn.dataset.packKungfu);return;}
   if(btn.dataset.packSoul){chooseSoulPack(btn.dataset.packSoul);return;}
-  if(btn.dataset.packSpecial){chooseSpecialPack(btn.dataset.packSpecial);return;}
+  if(btn.dataset.packSpecialSelect){specialChoiceItem=btn.dataset.packSpecialSelect;bagNotice='';renderBagSection('packs');return;}
+  if(btn.dataset.specialPackMinus!==undefined){const r=pageEl.querySelector('[data-special-pack-range]');if(r){r.value=String(Math.max(1,Number(r.value||1)-1));updateSpecialBatchPreview();}return;}
+  if(btn.dataset.specialPackPlus!==undefined){const r=pageEl.querySelector('[data-special-pack-range]');if(r){r.value=String(Math.min(Number(r.max||1),Number(r.value||1)+1));updateSpecialBatchPreview();}return;}
+  if(btn.dataset.specialPackAll!==undefined){const r=pageEl.querySelector('[data-special-pack-range]');if(r){r.value=r.max;updateSpecialBatchPreview();}return;}
+  if(btn.dataset.confirmSpecialPack!==undefined){confirmSpecialPack();return;}
   if(btn.dataset.jhPanel){activePanel=btn.dataset.jhPanel;renderActivePanel();return;}
   if(btn.dataset.mallBuy){buyMallItem(btn.dataset.mallBuy,Number(btn.dataset.mallQty||1));return;}
   if(btn.dataset.jhBack!==undefined)leaveSubpage();
 });
+pageEl.addEventListener('input',e=>{if(e.target?.matches?.('[data-special-pack-range]'))updateSpecialBatchPreview();});
 document.addEventListener('click',e=>{if(!activePanel)return;if(e.target.closest('.jh-subpage-panel')||e.target.closest('.bottom-nav')||e.target.closest('[data-jh-backdrop]'))return;if(e.target.closest('.topbar')||e.target.closest('.resource-bar'))leaveSubpage();},true);
-bottomNav?.addEventListener('click',e=>{const btn=e.target.closest('[data-page]');if(!btn)return;activePanel=null;if(btn.dataset.page!=='challenge'){bagSection=null;bagChoice=null;}},true);
+bottomNav?.addEventListener('click',e=>{const btn=e.target.closest('[data-page]');if(!btn)return;activePanel=null;if(btn.dataset.page!=='challenge'){bagSection=null;bagChoice=null;specialChoiceItem='';specialChoiceQty=1;bagNotice='';}},true);
 let queued=false;const observer=new MutationObserver(()=>{if(queued)return;queued=true;queueMicrotask(()=>{queued=false;applyNavigationCleanup();});});observer.observe(pageEl,{childList:true,subtree:true});
 applyNavigationCleanup();

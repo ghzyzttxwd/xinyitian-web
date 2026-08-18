@@ -1,0 +1,107 @@
+name: Apply V0.24.3 patch
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-v0243.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch source
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def must_replace(path, old, new, count=1):
+              p=Path(path); s=p.read_text(encoding='utf-8')
+              if old not in s:
+                  raise SystemExit(f'missing replacement target in {path}: {old[:120]!r}')
+              s=s.replace(old,new,count)
+              p.write_text(s,encoding='utf-8')
+
+          # 1) 小昭：修正为单体绝技，并给己方攻击最高侠客+2怒。
+          must_replace('src/data.js',
+              "skill: { name: '圣火心诀', target: 'all', multiplier: .88, rageCost: 4, teamRage: 1 },",
+              "skill: { name: '轻罗飞花', target: 'one', multiplier: 1, compatMultiplier: true, rageCost: 4, highestAtkAllyRage: 2 },")
+
+          # 2) 战斗引擎：支持小昭的定向回怒，不再借用全队回怒。
+          must_replace('src/battle.js',
+              "  if(useSkill){\n    applyThreeDuAfterSkill(actor,own,log);\n    teamRage(own,skill.teamRage||0,actor,log,round);healTeam(own,actor,skill.healTeam||0,log);",
+              "  if(useSkill){\n    applyThreeDuAfterSkill(actor,own,log);\n    if(Number(skill.highestAtkAllyRage||0)>0){const ally=[...living(own)].sort((a,b)=>b.atk-a.atk)[0];if(ally){const before=ally.rage;ally.rage=Math.min(8,ally.rage+Number(skill.highestAtkAllyRage||0));const gained=ally.rage-before;if(gained){triggerInnerBuff(ally,own,round,log);log.push(`${actor.name}施展【${skill.name}】，为${ally.name}回复${gained}点怒气。`);}}}\n    teamRage(own,skill.teamRage||0,actor,log,round);healTeam(own,actor,skill.healTeam||0,log);")
+
+          p=Path('src/app.js'); s=p.read_text(encoding='utf-8')
+
+          # 3) 侠客详情：技能描述支持“攻击最高侠客+2怒”，兼容倍率不冒充原版精确值。
+          pat=r"function heroSkillDetail\(tpl\)\{.*?return parts\.join\(' · '\);\}"
+          new="""function heroSkillDetail(tpl){const sk=tpl?.skill||{},damageText=sk.compatMultiplier?'伤害倍率待核原版':`${Number(sk.multiplier||1).toFixed(2)}倍`,parts=[`${sk.name||'绝技'} · ${skillTargetText(sk.target)} · ${damageText}`,`${Number(sk.rageCost||4)}怒`];if(sk.highestAtkAllyRage)parts.push(`己方攻击最高侠客回怒+${sk.highestAtkAllyRage}`);if(sk.teamRage)parts.push(`全队回怒+${sk.teamRage}`);if(sk.healTeam)parts.push(`全队治疗系数${Math.round(sk.healTeam*100)}%`);if(sk.refundOnKill)parts.push('击杀返还绝技怒气');if(sk.repeatChance)parts.push(`连发概率${Math.round(sk.repeatChance*100)}%`);if(sk.ignoreDef)parts.push(`穿防${Math.round(sk.ignoreDef*100)}%`);if(Array.isArray(sk.abnormal))parts.push(...sk.abnormal.map(x=>`${{stun:'眩晕',silence:'沉默',seal:'封穴'}[x.type]||'异常'}${Math.round(Number(x.chance||0)*100)}%`));return parts.join(' · ');}"""
+          s,n=re.subn(pat,new,s,count=1,flags=re.S)
+          if n!=1: raise SystemExit('heroSkillDetail patch failed')
+
+          # 4) 侠客详情不再统一塞在页面最顶端，而是在被点击侠客卡片下方展开。
+          old="const awaken=awakeningConfig(id);return `<section class=\"card\">"
+          new="const awaken=awakeningConfig(id);return `<section class=\"card\" data-hero-detail-panel=\"${id}\">"
+          if old not in s: raise SystemExit('hero detail panel marker target missing')
+          s=s.replace(old,new,1)
+
+          pat=r"function heroListCard\(id\)\{.*?\}\nfunction renderHeroes\(\)\{.*?\}\n\nfunction ensureGrowthHero"
+          new="""function heroListCard(id){const open=heroDetailId===id;return `<div class=\"hero-list-item\">${heroCard(id)}<button class=\"detail-link ${open?'active':''}\" data-hero-detail=\"${id}\">${open?'收起详情':'查看侠客详情'}</button>${open?heroDetailHtml(id):''}</div>`;}
+function renderHeroes(){const allIds=Object.keys(HEROES).sort((a,b)=>{const ao=state.heroes[a]?.owned?1:0,bo=state.heroes[b]?.owned?1:0;if(ao!==bo)return bo-ao;if(HEROES[a].unlock!==HEROES[b].unlock)return HEROES[a].unlock-HEROES[b].unlock;return HEROES[b].rarity-HEROES[a].rarity;}),ids=allIds.filter(heroMatchesFilter),ownedCount=allIds.filter(id=>state.heroes[id]?.owned).length;pageEl.innerHTML=`<div class=\"page-heading\"><div><span class=\"eyebrow\">侠客谱</span><h2>侠客</h2></div><small>已结识 ${ownedCount}/${allIds.length}</small></div><div class=\"filter-strip\">${HERO_FILTERS.map(([key,label])=>`<button class=\"filter-chip ${heroFilter===key?'active':''}\" data-hero-filter=\"${key}\">${label}</button>`).join('')}</div><div class=\"hero-list\">${ids.length?ids.map(heroListCard).join(''):'<section class=\"card\"><div class=\"muted\">当前筛选条件下没有侠客。</div></section>'}</div>`;}
+
+function ensureGrowthHero"""
+          s,n=re.subn(pat,new,s,count=1,flags=re.S)
+          if n!=1: raise SystemExit('hero inline detail patch failed')
+
+          # 5) 藏经阁：非红结果每次随机8~45残页；抽完恢复原滚动位置。
+          pat=r"function drawKungfu\(times=1\)\{.*?\}\nfunction removeKungfuEverywhere"
+          new="""function drawKungfu(times=1){const n=Number(times)===5?5:1,cost=n*300;if(state.player.gems<cost)return alert(`元宝不足，需要${cost}元宝。`);const keepY=window.scrollY;state.player.gems-=cost;const reds=[];let fragments=0;for(let i=0;i<n;i++){state.kungfu.drawCount=Number(state.kungfu.drawCount||0)+1;if(Math.random()<.02){const ids=Object.keys(RED_KUNGFU),id=ids[Math.floor(Math.random()*ids.length)];addKungfuCopy(id,1);reds.push(RED_KUNGFU[id].name);}else{const gain=8+Math.floor(Math.random()*38);state.kungfu.fragments=Number(state.kungfu.fragments||0)+gain;fragments+=gain;}}bumpDaily(state,'scripture',n);commit();const redText=reds.length?`红色功法：${reds.map(x=>`【${x}】`).join('、')}`:'未获得红色功法';alert(`藏经阁抽取${n}次：${redText}${fragments?`；功法残页 +${fragments}`:''}。`);requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo({top:keepY,left:0,behavior:'auto'})));}
+function removeKungfuEverywhere"""
+          s,n=re.subn(pat,new,s,count=1,flags=re.S)
+          if n!=1: raise SystemExit('drawKungfu patch failed')
+
+          # 6) 藏经阁页面明确展示残页用途；橙色未接入时不虚构兑换价。
+          pat=r"function renderKungfuPanel\(\)\{.*?\n\}\nfunction formatRemain"
+          new="""function renderKungfuPanel(){
+ const talent=heroTalent(state,selectedGrowthHero),slots=kungfuSlotsForTalent(talent);
+ return `<section class=\"card kungfu-main-card\"><div class=\"section-title\"><h3>${HEROES[selectedGrowthHero].name} · 功法</h3><small>天赋 ${fmt(talent)} · 已开 ${slots}/8槽</small></div>${kungfuEquipSlotsHtml()}<div class=\"notice\" style=\"margin-top:10px\">功法槽按总天赋实时解锁：220天赋开启前三槽；280/340/400/460/520依次开启第4～8槽。</div></section>
+ <section class=\"card\" id=\"scriptureDraw\"><div class=\"section-title\"><h3>藏经阁</h3><small>元宝直接抽取</small></div><div class=\"notice\">300元宝抽1次，1500元宝抽5次。红色功法概率暂沿用当前2%配置；未抽到红功法时，每次随机获得8～45张功法残页。</div><div class=\"action-row\" style=\"margin-top:10px\"><button class=\"btn\" data-action=\"drawKungfu1\" ${state.player.gems<300?'disabled':''}>抽1次 · 300元宝</button><button class=\"btn btn-gold\" data-action=\"drawKungfu5\" ${state.player.gems<1500?'disabled':''}>抽5次 · 1500元宝</button></div><div class=\"hero-meta\" style=\"margin-top:8px\">累计抽取 ${fmt(state.kungfu?.drawCount||0)} 次 · 功法残页 ${fmt(state.kungfu?.fragments||0)}</div></section>
+ <section class=\"card\" id=\"kungfuFragmentShop\"><div class=\"section-title\"><h3>功法商店</h3><small>功法残页 ${fmt(state.kungfu?.fragments||0)}</small></div><div class=\"notice\">原版功法残页在集市/功法商店兑换功法。当前单机精简版尚未接入橙色功法，所以残页先正常累计保留；这里暂不乱设红色功法兑换价。后续若补橙色功法，再在这里开放正式兑换。</div></section>
+ <div class=\"section-title\" id=\"kungfuLibrary\"><h3>红色功法</h3><small>25门</small></div><div class=\"hero-list\">${redKungfuCards()}</div>
+ <div class=\"section-title\" style=\"margin-top:18px\"><h3>神级融合功法</h3><small>13门</small></div><div class=\"hero-list\">${divineCards()}</div>`;
+}
+function formatRemain"""
+          s,n=re.subn(pat,new,s,count=1,flags=re.S)
+          if n!=1: raise SystemExit('renderKungfuPanel patch failed')
+
+          # 7) 点侠客详情时，让展开内容至少进入当前可视区域。
+          old="if(btn.dataset.heroDetail){heroDetailId=heroDetailId===btn.dataset.heroDetail?null:btn.dataset.heroDetail;renderHeroes();return;}"
+          new="if(btn.dataset.heroDetail){const id=btn.dataset.heroDetail,opening=heroDetailId!==id;heroDetailId=opening?id:null;renderHeroes();if(opening)requestAnimationFrame(()=>pageEl.querySelector(`[data-hero-detail-panel=\"${id}\"]`)?.scrollIntoView({block:'nearest',behavior:'smooth'}));return;}"
+          if old not in s: raise SystemExit('hero detail click patch target missing')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+
+          # 8) 版本统一到 0.24.3。
+          p=Path('index.html'); s=p.read_text(encoding='utf-8')
+          s=s.replace('0242','0243').replace('V0.24.2','V0.24.3')
+          p.write_text(s,encoding='utf-8')
+
+          # 临时工作流完成本次补丁后自行删除。
+          Path('.github/workflows/patch-v0243.yml').unlink()
+          PY
+
+          node --check src/app.js
+          node --check src/data.js
+          node --check src/battle.js
+
+          git config user.name 'xinyitian-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix: v0.24.3 kungfu draws hero details and Xiao Zhao'
+          git push

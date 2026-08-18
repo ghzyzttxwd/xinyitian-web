@@ -1,10 +1,11 @@
-const CACHE = 'xinyitian-v0.22.3';
+const CACHE = 'xinyitian-v0.23.0';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
   './scenes.css',
   './jianghu-nav.css',
+  './battle-visual.css',
   './assets/original/hero-bg.jpg',
   './assets/original/jianghu-bg.jpg',
   './assets/original/icon-gems.png',
@@ -23,6 +24,7 @@ const ASSETS = [
   './src/state.js',
   './src/story.js',
   './src/battle.js',
+  './src/battle-visual.js',
   './src/meridians.js',
   './src/kungfu.js',
   './src/innerpower.js',

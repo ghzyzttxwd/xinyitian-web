@@ -1,0 +1,12 @@
+/* V0.23.5: independent battle controls outside the visual layer. */
+#battleDialog[hidden],#battleControlRail[hidden]{display:none!important}
+#battleDialog.battle-overlay-open[open]{position:fixed!important;inset:0!important;z-index:2147483000!important;display:flex!important;align-items:flex-end!important;justify-content:center!important;width:100vw!important;max-width:none!important;height:100dvh!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:rgba(0,0,0,.78)!important;overflow:auto!important}
+#battleDialog.battle-overlay-open #battleDialogBody{position:relative!important;width:min(100%,760px)!important;max-height:92dvh!important;overflow:auto!important;background:#17120e!important;border:1px solid rgba(206,166,97,.5)!important;border-radius:16px 16px 0 0!important;box-shadow:0 -12px 60px rgba(0,0,0,.55)!important}
+#battleDialog .battle-visual-stage{pointer-events:auto!important}
+#battleDialog .bv-field,#battleDialog .bv-team,#battleDialog .bv-fighter,#battleDialog .bv-portrait,#battleDialog .bv-name,#battleDialog .bv-hp,#battleDialog .bv-rage,#battleDialog .bv-center-mark,#battleDialog .bv-skill-banner,#battleDialog .bv-ticker{pointer-events:none!important}
+#battleDialog .bv-controls,#battleDialog .bv-controls *,#battleDialog .modal-head,#battleDialog .modal-head *,#battleDialog .bv-log-details,#battleDialog .bv-log-details summary{pointer-events:auto!important;touch-action:manipulation!important}
+.battle-control-rail{position:fixed;z-index:2147483646;top:max(8px,env(safe-area-inset-top));left:8px;right:8px;display:flex;justify-content:flex-end;gap:7px;pointer-events:auto!important;touch-action:manipulation}
+.battle-control-rail button{appearance:none;min-width:58px;min-height:44px;padding:8px 11px;border:1px solid rgba(225,186,110,.58);border-radius:8px;background:rgba(24,18,14,.96);color:#f1d18a;font:700 14px/1 system-ui,-apple-system,"PingFang SC",sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.42);pointer-events:auto!important;touch-action:manipulation}
+.battle-control-rail [data-rail-close]{background:#6f2d27;border-color:#a75046;color:#fff0df}
+.battle-control-rail button:active{transform:translateY(1px);filter:brightness(1.15)}
+@media(min-width:700px){#battleDialog.battle-overlay-open{align-items:center!important;padding:24px!important}#battleDialog.battle-overlay-open #battleDialogBody{border-radius:16px!important;max-height:90dvh!important}.battle-control-rail{top:18px;right:24px}}

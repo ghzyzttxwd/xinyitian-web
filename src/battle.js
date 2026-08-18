@@ -233,6 +233,7 @@ function performOne(actor,own,enemies,log,round,forceSkill=false,forceNormal=fal
   const steal=effectOf(actor,'lifesteal');if(steal&&total>0&&actor.alive){const heal=Math.round(total*steal.ratio);actor.hpNow=Math.min(actor.hp,actor.hpNow+heal);log.push(`${actor.name}凭【${steal.label||'玄铁指环'}】吸血 ${heal.toLocaleString()}。`);}
   if(useSkill){
     applyThreeDuAfterSkill(actor,own,log);
+    if(Number(skill.highestAtkAllyRage||0)>0){const ally=[...living(own)].sort((a,b)=>b.atk-a.atk)[0];if(ally){const before=ally.rage;ally.rage=Math.min(8,ally.rage+Number(skill.highestAtkAllyRage||0));const gained=ally.rage-before;if(gained){triggerInnerBuff(ally,own,round,log);log.push(`${actor.name}施展【${skill.name}】，为${ally.name}回复${gained}点怒气。`);}}}
     teamRage(own,skill.teamRage||0,actor,log,round);healTeam(own,actor,skill.healTeam||0,log);
     const rageFloor=effectOf(actor,'rageFloorAfterSkill');if(rageFloor){for(const ally of living(own)){const before=ally.rage;ally.rage=Math.max(ally.rage,rageFloor.value);if(ally.rage>before)triggerInnerBuff(ally,own,round,log);}log.push(`${actor.name}悟道令己方低怒侠客补至${rageFloor.value}怒。`);}
     const drain=effectOf(actor,'skillDrainRage');if(drain){for(const foe of living(enemies)){const lost=reduceRage(foe,enemies,drain.amount,log);if(lost)log.push(`${actor.name}压制${foe.name}怒气 -${lost}。`);}}

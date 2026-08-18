@@ -1,0 +1,69 @@
+/* V0.24.13: Android功法弹窗滚动 + 神兵第一轮手机交互 */
+
+/* 功法弹窗：由内部列表接管纵向触摸滚动，避免内容被dialog裁掉。 */
+#genericDialog.kungfu-dialog{
+  width:min(96vw,640px);
+  height:min(78dvh,760px);
+  max-height:calc(100dvh - 18px);
+  overflow:hidden!important;
+  overscroll-behavior:none;
+}
+#genericDialog.kungfu-dialog #genericDialogBody{
+  height:100%;
+  min-height:0;
+  overflow:hidden;
+}
+#genericDialog.kungfu-dialog .kungfu-modal-inner{
+  height:100%;
+  min-height:0;
+  overflow:hidden;
+}
+#genericDialog.kungfu-dialog .kungfu-picker-scroll,
+#genericDialog.kungfu-dialog .kungfu-detail-panel{
+  flex:1 1 0;
+  min-height:0;
+  max-height:none;
+  overflow-y:scroll!important;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+  overscroll-behavior-y:contain;
+  padding-bottom:24px;
+}
+#genericDialog.kungfu-dialog .kungfu-choice-grid{padding-bottom:8px}
+
+/* 神兵装备选择弹窗 */
+#genericDialog.weapon-dialog{
+  width:min(96vw,640px);
+  height:min(78dvh,760px);
+  max-height:calc(100dvh - 18px);
+  overflow:hidden!important;
+}
+#genericDialog.weapon-dialog #genericDialogBody{height:100%;min-height:0;overflow:hidden}
+.weapon-modal-inner{height:100%;min-height:0;display:flex;flex-direction:column;padding:12px}
+.weapon-picker-scroll{flex:1 1 0;min-height:0;overflow-y:scroll;overflow-x:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior-y:contain;padding:2px 1px 22px}
+.weapon-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.weapon-choice-card{display:flex;min-height:132px;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;padding:10px;border:1px solid rgba(191,147,79,.4);border-radius:8px;background:linear-gradient(145deg,rgba(48,34,22,.98),rgba(20,20,17,.98));color:var(--text)}
+.weapon-choice-card.disabled{opacity:.42}
+.weapon-choice-name{font-size:14px;font-weight:900;color:#ef6a58}
+.weapon-choice-state{font-size:10px;color:#d6b675}
+.weapon-choice-effect{font-size:10px;line-height:1.45;color:#9f9584;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.weapon-choice-stock{font-size:9.5px;color:#b8a78d}
+.weapon-choice-status{margin-top:auto;font-size:10px;color:#e3bd70}
+
+.weapon-slot-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.weapon-slot-card{min-height:96px;padding:10px;border:1px solid rgba(180,142,79,.3);border-radius:8px;background:rgba(17,18,15,.88)}
+.weapon-slot-card .weapon-slot-label{font-size:9px;color:#8f8069}
+.weapon-slot-card .weapon-slot-name{margin:4px 0 2px;font-weight:900;color:#e4bd70;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.weapon-slot-card .weapon-slot-meta{font-size:9.5px;color:#a99d89;line-height:1.45;min-height:28px}
+.weapon-slot-card .btn{margin-top:7px;width:100%;padding:7px 8px;font-size:10px}
+
+.weapon-system-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:10px}
+.weapon-system-summary .mini-stat{padding:8px 5px}
+.weapon-system-summary .mini-stat b{display:block;margin-top:2px;color:#e7c477;font-size:13px}
+
+@media(max-width:430px){
+  #genericDialog.kungfu-dialog,#genericDialog.weapon-dialog{width:calc(100vw - 10px);height:80dvh;max-height:calc(100dvh - 10px)}
+  .kungfu-choice-card{min-height:112px}
+  .weapon-choice-card{min-height:126px;padding:9px}
+}

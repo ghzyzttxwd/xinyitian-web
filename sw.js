@@ -1,4 +1,4 @@
-const CACHE = 'xinyitian-v0.23.4';
+const CACHE = 'xinyitian-v0.23.5';
 const ASSETS = [
   './',
   './index.html',
@@ -7,6 +7,7 @@ const ASSETS = [
   './jianghu-nav.css',
   './battle-visual.css',
   './battle-polish.css',
+  './battle-controls.css',
   './battle-dialog-shell.js',
   './assets/original/hero-bg.jpg',
   './assets/original/jianghu-bg.jpg',

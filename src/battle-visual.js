@@ -94,12 +94,13 @@ function buildController(stage,events,players,enemies,finalBox,outcome,reward){
     const d=strong?8:4;
     stage.animate([{transform:'translate3d(0,0,0)'},{transform:`translate3d(${-d}px,1px,0)`},{transform:`translate3d(${d}px,-1px,0)`},{transform:'translate3d(0,0,0)'}],{duration:scaled(strong?250:160),easing:'ease-out'});
   }
-  function dashAttack(actorEl,targetEl){
+  function dashAttack(actorEl,targetEl,mode='normal'){
     const source=actorEl?.querySelector('.bv-portrait'),target=targetEl?.querySelector('.bv-portrait');
     if(!source||!target)return;
     const s=source.getBoundingClientRect(),t=target.getBoundingClientRect(),root=stage.getBoundingClientRect();
     const ghost=source.cloneNode(true);
     ghost.classList.add('bv-dash-ghost',actorEl.classList.contains('enemy')?'enemy-ghost':'player-ghost');
+    if(mode==='wudang')ghost.classList.add('wuji-longfist-ghost');
     const sourceStyle=getComputedStyle(source);
     ghost.style.background=sourceStyle.background;
     ghost.style.backgroundImage=sourceStyle.backgroundImage;
@@ -115,13 +116,23 @@ function buildController(stage,events,players,enemies,finalBox,outcome,reward){
     const dx=(t.left+t.width/2)-(s.left+s.width/2),dy=(t.top+t.height/2)-(s.top+s.height/2);
     const finish=()=>{ghost.remove();source.style.visibility='';};
     if(ghost.animate){
-      const anim=ghost.animate([
-        {transform:'translate3d(0,0,0) scale(1)',filter:'brightness(1)'},
-        {offset:.18,transform:`translate3d(${dx*.18}px,${dy*.18-4}px,0) scale(1.08)`,filter:'brightness(1.25)'},
-        {offset:.52,transform:`translate3d(${dx*.82}px,${dy*.82}px,0) scale(1.15)`,filter:'brightness(1.45)'},
-        {offset:.68,transform:`translate3d(${dx*.72}px,${dy*.72}px,0) scale(1.08)`,filter:'brightness(1.15)'},
-        {transform:'translate3d(0,0,0) scale(1)',filter:'brightness(1)'}
-      ],{duration:scaled(480),easing:'cubic-bezier(.2,.8,.2,1)'});
+      const frames=mode==='wudang'
+        ?[
+          {transform:'translate3d(0,0,0) scale(1)',filter:'brightness(1)'},
+          {offset:.16,transform:'translate3d(-8px,2px,0) scale(.96)',filter:'brightness(1.08)'},
+          {offset:.48,transform:`translate3d(${dx*.78}px,${dy*.78-3}px,0) scale(1.08)`,filter:'brightness(1.35) drop-shadow(0 0 8px rgba(255,224,155,.7))'},
+          {offset:.62,transform:`translate3d(${dx*.9}px,${dy*.9}px,0) scale(1.12)`,filter:'brightness(1.6) drop-shadow(0 0 12px rgba(255,211,118,.9))'},
+          {offset:.78,transform:`translate3d(${dx*.72}px,${dy*.72}px,0) scale(1.04)`,filter:'brightness(1.12)'},
+          {transform:'translate3d(0,0,0) scale(1)',filter:'brightness(1)'}
+        ]
+        :[
+          {transform:'translate3d(0,0,0) scale(1)',filter:'brightness(1)'},
+          {offset:.18,transform:`translate3d(${dx*.18}px,${dy*.18-4}px,0) scale(1.08)`,filter:'brightness(1.25)'},
+          {offset:.52,transform:`translate3d(${dx*.82}px,${dy*.82}px,0) scale(1.15)`,filter:'brightness(1.45)'},
+          {offset:.68,transform:`translate3d(${dx*.72}px,${dy*.72}px,0) scale(1.08)`,filter:'brightness(1.15)'},
+          {transform:'translate3d(0,0,0) scale(1)',filter:'brightness(1)'}
+        ];
+      const anim=ghost.animate(frames,{duration:scaled(mode==='wudang'?620:480),easing:'cubic-bezier(.2,.8,.2,1)'});
       anim.onfinish=finish;anim.oncancel=finish;
     }else{pulse(actorEl,'acting',430);finish();}
   }
@@ -129,6 +140,22 @@ function buildController(stage,events,players,enemies,finalBox,outcome,reward){
     if(actorEl){pulse(actorEl,'skill-cast',720);const aura=document.createElement('span');aura.className='bv-skill-aura';actorEl.appendChild(aura);setTimeout(()=>aura.remove(),scaled(760));}
     const wave=document.createElement('span');wave.className='bv-skill-wave';stage.appendChild(wave);setTimeout(()=>wave.remove(),scaled(700));
     setTimeout(()=>{for(const t of targets)addImpact(card(t.name),'burst',crit);stageShake(true);},scaled(170));
+  }
+  function wudangLongFist(actorEl,targetEl,crit){
+    if(!actorEl||!targetEl)return;
+    pulse(actorEl,'wuji-longfist-cast',680);
+    const source=actorEl.querySelector('.bv-portrait');
+    if(source){
+      const breath=document.createElement('span');
+      breath.className='wuji-longfist-breath';
+      source.appendChild(breath);
+      setTimeout(()=>breath.remove(),scaled(700));
+    }
+    dashAttack(actorEl,targetEl,'wudang');
+    setTimeout(()=>{
+      addImpact(targetEl,'wudang-fist',crit);
+      stageShake(crit);
+    },scaled(360));
   }
   function applyDamage(targets,event,crit,dodged,guarded){
     let visualDrop=event.damage<=0?0:clamp(6+Math.log10(event.damage+1)*5+(event.normal?0:8)+(crit?6:0),8,55);
@@ -150,10 +177,15 @@ function buildController(stage,events,players,enemies,finalBox,outcome,reward){
     if(event.skill&&skillEl){skillEl.textContent=`${actor.name} · ${event.skill}`;skillEl.classList.add('show');setTimeout(()=>skillEl.classList.remove('show'),scaled(720));}
     if(!targets.length){setTicker(event.line);return;}
     const crit=event.tail.includes('暴击'),dodged=event.tail.includes('闪避'),guarded=event.tail.includes('护盾挡下');
+    const isWujiLongFist=!event.normal&&actor.name==='张无忌'&&event.skill==='武当长拳';
     if(event.normal){
       const targetEl=card(targets[0].name);
       dashAttack(actorEl,targetEl);
       setTimeout(()=>{addImpact(targetEl,'slash',crit);stageShake(crit);applyDamage(targets,event,crit,dodged,guarded);},scaled(190));
+    }else if(isWujiLongFist){
+      const targetEl=card(targets[0].name);
+      wudangLongFist(actorEl,targetEl,crit);
+      setTimeout(()=>applyDamage(targets,event,crit,dodged,guarded),scaled(360));
     }else{
       skillCast(actorEl,targets,crit);
       setTimeout(()=>applyDamage(targets,event,crit,dodged,guarded),scaled(180));
@@ -170,7 +202,7 @@ function buildController(stage,events,players,enemies,finalBox,outcome,reward){
   function finish(){if(finished)return;finished=true;if(timer)clearTimeout(timer);const win=outcome.classList.contains('battle-win');const losing=win?enemies:players;for(const f of losing){f.alive=false;f.hpPct=0;sync(f);}if(roundEl)roundEl.textContent=win?'战斗胜利':'战斗失败';setTicker(win?'胜利！奖励已经结算。':'战败，可调整阵容与养成后再试。');finalBox.hidden=false;finalBox.classList.add('show');stage.querySelector('[data-bv-skip]')?.setAttribute('disabled','');}
   function skip(){index=events.length;finish();}
   function toggleSpeed(){speed=speed>=5?1:speed+1;stage.dataset.bvSpeedLevel=String(speed);const btn=stage.querySelector('[data-bv-speed]');if(btn)btn.textContent=`${speed}×`;stage.dispatchEvent(new CustomEvent('battlespeedchange',{detail:{speed,rate:rate()}}));}
-  function stop(){if(timer)clearTimeout(timer);finished=true;for(const ghost of stage.querySelectorAll('.bv-dash-ghost,.bv-impact,.bv-skill-wave,.bv-skill-aura'))ghost.remove();}
+  function stop(){if(timer)clearTimeout(timer);finished=true;for(const ghost of stage.querySelectorAll('.bv-dash-ghost,.bv-impact,.bv-skill-wave,.bv-skill-aura,.wuji-longfist-breath'))ghost.remove();}
   return {start(){timer=setTimeout(schedule,scaled(180));},skip,toggleSpeed,stop};
 }
 

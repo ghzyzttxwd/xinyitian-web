@@ -1,0 +1,19 @@
+/* V0.24.23 battle presentation corrections. */
+
+/* Zhang Wuji is single-target. While his dedicated motion is active, suppress
+   the generic full-field skill wave/aura that visually reads as a group attack. */
+.battle-visual-stage.wuji-v02422-cast .bv-skill-wave,
+.battle-visual-stage.wuji-v02422-cast .bv-skill-aura{
+  display:none!important;
+}
+
+/* Enemy dash ghosts are cloned outside .enemy-team, so the hidden initial
+   would otherwise reappear as a giant “守/元/古” flying across the field. */
+.battle-v240 .bv-dash-ghost.enemy-ghost>span{
+  display:none!important;
+}
+
+/* Keep the cloned enemy silhouette instead of its text initial. */
+.battle-v240 .bv-dash-ghost.enemy-ghost{
+  background:radial-gradient(circle at 50% 20%,rgba(121,105,91,.72) 0 12%,transparent 13%),linear-gradient(160deg,transparent 25%,rgba(77,69,61,.88) 26% 66%,rgba(37,33,30,.98) 67%)!important;
+}

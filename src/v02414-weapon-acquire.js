@@ -1,5 +1,5 @@
 import { FORGE_THEMES, WEAPONS, WEAPON_FORGE_COST, rollForge, weaponRecord } from './weapons.js';
-import { saveState } from './state.js';
+import { saveState, normalizeDaily } from './state.js';
 
 const page=document.querySelector('#page');
 const saveStatus=document.querySelector('#saveStatus');
@@ -7,6 +7,8 @@ const PACK_IRON=100;
 const PACK_GEMS=100;
 const FORGE_PROGRESS_NEED=100;
 const FORGE_PROGRESS_BASE=10;
+const DAILY_WEAPON_LIMIT=12;
+const DAILY_WEAPON_KEY='weaponForgeGains';
 
 function state(){return globalThis.__XYT_STATE__||null;}
 function fmt(n){return Number(n||0).toLocaleString('zh-CN');}
@@ -27,6 +29,12 @@ function ensureProgress(s,idx){
   s.weapons.forgeProgress[key]=Math.max(0,Math.floor(Number(s.weapons.forgeProgress[key]||0)));
   return key;
 }
+function ensureDailyWeaponCount(s){
+  normalizeDaily(s);
+  s.daily=s.daily||{};
+  s.daily[DAILY_WEAPON_KEY]=Math.max(0,Math.floor(Number(s.daily[DAILY_WEAPON_KEY]||0)));
+  return s.daily[DAILY_WEAPON_KEY];
+}
 function rollProgress(){
   const r=Math.random();
   if(r<.03)return {gain:FORGE_PROGRESS_BASE*3,multi:3};
@@ -40,26 +48,39 @@ function grantWeapon(s,id){
   else r.copies=Math.max(0,Number(r.copies||0))+1;
   return w.name;
 }
+function payOneForge(s){
+  let iron=Math.max(0,Number(s.weapons?.iron||0));
+  let boughtGems=0;
+  if(iron<WEAPON_FORGE_COST){
+    const gems=Math.max(0,Number(s.player?.gems||0));
+    if(gems<PACK_GEMS)return {ok:false,boughtGems:0};
+    s.player.gems=gems-PACK_GEMS;
+    iron+=PACK_IRON;
+    boughtGems=PACK_GEMS;
+  }
+  s.weapons.iron=iron-WEAPON_FORGE_COST;
+  return {ok:true,boughtGems};
+}
 
 function acquisitionHtml(){
   const s=state();if(!s)return '';
   const {idx,theme}=currentTheme(),key=ensureProgress(s,idx);
+  const today=ensureDailyWeaponCount(s),limitReached=today>=DAILY_WEAPON_LIMIT;
   const progress=Math.min(FORGE_PROGRESS_NEED-1,Number(s.weapons.forgeProgress[key]||0));
   const iron=Math.max(0,Number(s.weapons?.iron||0));
-  const gems=Math.max(0,Number(s.player?.gems||0));
   const owned=Object.values(s.weapons?.items||{}).filter(x=>x?.owned).length;
   return `<div class="weapon-acquire-box" style="margin-top:10px">
-    <div class="notice">原版神兵锻造走“精铁 → 锻造进度/暴击 → 出神兵”，不是点1次直接送1件。现在每次消耗${WEAPON_FORGE_COST}精铁，基础增加${FORGE_PROGRESS_BASE}进度，并有2倍/3倍暴击；进度满${FORGE_PROGRESS_NEED}才结算1件神兵。当前主题重点为【${WEAPONS[theme.featured]?.name||''}】，同时保留副产出与其他神兵。</div>
+    <div class="notice">神兵锻造走“精铁 → 锻造进度/暴击 → 出神兵”。每次消耗${WEAPON_FORGE_COST}精铁，基础增加${FORGE_PROGRESS_BASE}进度，并有2倍/3倍暴击；进度满${FORGE_PROGRESS_NEED}才结算1件神兵。<b>每天最多实际获得${DAILY_WEAPON_LIMIT}把神兵</b>，达到上限后当日停止锻造，次日自动重置。当前主题重点为【${WEAPONS[theme.featured]?.name||''}】。</div>
     <div class="grid-3" style="margin-top:9px">
       <div class="mini-stat"><div class="muted">锻造进度</div><b>${progress}/${FORGE_PROGRESS_NEED}</b></div>
+      <div class="mini-stat"><div class="muted">今日获得</div><b>${today}/${DAILY_WEAPON_LIMIT}</b></div>
       <div class="mini-stat"><div class="muted">精铁</div><b>${fmt(iron)}</b></div>
-      <div class="mini-stat"><div class="muted">已收集</div><b>${owned}/${Object.keys(WEAPONS).length}</b></div>
     </div>
     <div class="action-row" style="margin-top:9px">
-      <button class="btn btn-primary" type="button" data-smart-weapon-forge="1">锻造1次</button>
-      <button class="btn btn-gold" type="button" data-smart-weapon-forge="5">连续锻造5次</button>
+      <button class="btn btn-primary" type="button" data-smart-weapon-forge="1" ${limitReached?'disabled':''}>${limitReached?'今日已达上限':'锻造1次'}</button>
+      <button class="btn btn-gold" type="button" data-smart-weapon-forge="5" ${limitReached?'disabled':''}>${limitReached?'12/12':'连续锻造5次'}</button>
     </div>
-    <div class="hero-meta" style="margin-top:7px">精铁不足时仍按当前单机补给价自动补足：${PACK_GEMS}元宝 = ${PACK_IRON}精铁。这里的进度与暴击数值属于单机平衡值，不冒充原版精确概率。</div>
+    <div class="hero-meta" style="margin-top:7px">已收集 ${owned}/${Object.keys(WEAPONS).length} · 精铁不足时按当前单机补给价自动补足：${PACK_GEMS}元宝 = ${PACK_IRON}精铁。五连途中若拿到当天第${DAILY_WEAPON_LIMIT}把，会立即停止，未执行次数不扣资源。</div>
   </div>`;
 }
 
@@ -68,7 +89,7 @@ function patchForgeCard(){
   const card=forgeCard();if(!card)return;
   card.classList.add('weapon-acquire-card');
   const title=card.querySelector('.section-title h3');if(title)title.textContent='神兵获取 · 常驻锻造';
-  const small=card.querySelector('.section-title small');if(small)small.textContent='进度 / 暴击';
+  const small=card.querySelector('.section-title small');if(small)small.textContent='每日上限12把';
   let box=card.querySelector('.weapon-acquire-box');
   if(!box){
     card.querySelector('.section-title')?.insertAdjacentHTML('afterend',acquisitionHtml());
@@ -85,33 +106,52 @@ function patchForgeCard(){
 
 function forgeMany(times){
   const s=state();if(!s)return;
-  const n=Number(times)===5?5:1;
+  const requested=Number(times)===5?5:1;
   s.weapons=s.weapons||{};s.weapons.items=s.weapons.items||{};
-  const totalIron=WEAPON_FORGE_COST*n;
-  let iron=Math.max(0,Number(s.weapons.iron||0));
-  const short=Math.max(0,totalIron-iron),packs=Math.ceil(short/PACK_IRON),gemCost=packs*PACK_GEMS;
-  const gems=Math.max(0,Number(s.player?.gems||0));
-  if(gems<gemCost)return alert(`精铁不足，自动补足还需要${gemCost}元宝；当前元宝${fmt(gems)}。`);
-  if(packs>0){s.player.gems=gems-gemCost;iron+=packs*PACK_IRON;}
-  s.weapons.iron=iron-totalIron;
+  let today=ensureDailyWeaponCount(s);
+  if(today>=DAILY_WEAPON_LIMIT)return alert(`今日神兵获取已达上限 ${DAILY_WEAPON_LIMIT}/${DAILY_WEAPON_LIMIT}，明天再来。`);
 
   const {idx}=currentTheme(),key=ensureProgress(s,idx);
-  let progress=Number(s.weapons.forgeProgress[key]||0),totalGain=0,doubleCount=0,tripleCount=0;
+  let progress=Number(s.weapons.forgeProgress[key]||0),totalGain=0,doubleCount=0,tripleCount=0,gemCost=0,actual=0;
   const gained=[];
-  for(let i=0;i<n;i++){
-    const roll=rollProgress();totalGain+=roll.gain;if(roll.multi===2)doubleCount++;if(roll.multi===3)tripleCount++;
-    progress+=roll.gain;s.weapons.forgeCount=Math.max(0,Number(s.weapons.forgeCount||0))+1;
-    while(progress>=FORGE_PROGRESS_NEED){
+
+  for(let i=0;i<requested;i++){
+    if(today>=DAILY_WEAPON_LIMIT)break;
+    const paid=payOneForge(s);
+    if(!paid.ok)break;
+    gemCost+=paid.boughtGems;
+    actual++;
+
+    const roll=rollProgress();
+    totalGain+=roll.gain;
+    if(roll.multi===2)doubleCount++;
+    if(roll.multi===3)tripleCount++;
+    progress+=roll.gain;
+    s.weapons.forgeCount=Math.max(0,Number(s.weapons.forgeCount||0))+1;
+
+    if(progress>=FORGE_PROGRESS_NEED){
       progress-=FORGE_PROGRESS_NEED;
-      const id=rollForge(idx),name=grantWeapon(s,id);if(name)gained.push(name);
+      const id=rollForge(idx),name=grantWeapon(s,id);
+      if(name){
+        gained.push(name);
+        today++;
+        s.daily[DAILY_WEAPON_KEY]=today;
+      }
     }
   }
+
+  if(actual<=0){
+    const gems=Math.max(0,Number(s.player?.gems||0));
+    return alert(`精铁不足，且自动补足需要${PACK_GEMS}元宝；当前元宝${fmt(gems)}。`);
+  }
+
   s.weapons.forgeProgress[key]=progress;
   persist();
-  const bought=packs>0?`；自动补精铁消耗${gemCost}元宝`:'';
+  const bought=gemCost>0?`；自动补精铁消耗${gemCost}元宝`:'';
   const crit=[doubleCount?`2倍暴击×${doubleCount}`:'',tripleCount?`3倍暴击×${tripleCount}`:''].filter(Boolean).join('、');
   const result=gained.length?`获得 ${gained.map(x=>`【${x}】`).join('、')}`:`本轮未满进度，当前 ${progress}/${FORGE_PROGRESS_NEED}`;
-  alert(`锻造${n}次：进度 +${totalGain}${crit?`（${crit}）`:''}${bought}；${result}。`);
+  const stopped=today>=DAILY_WEAPON_LIMIT&&actual<requested?'；已拿到今日第12把，剩余次数未执行、未扣资源':'';
+  alert(`实际锻造${actual}次：进度 +${totalGain}${crit?`（${crit}）`:''}${bought}；${result}。今日获得 ${today}/${DAILY_WEAPON_LIMIT}${stopped}`);
   refreshAll();
 }
 

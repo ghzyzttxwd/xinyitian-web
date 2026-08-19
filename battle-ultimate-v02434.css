@@ -1,0 +1,19 @@
+/* V0.24.34: stationary Wuji caster + two remote palm seals. Reuses V0.24.32 cut-in composition. */
+.battle-modal.wuji34-cutin-host{overflow:visible!important}
+.wuji34-cutin .wuji32-backdrop{animation-duration:var(--wuji34-cutin-ms,1.4s)!important}
+.wuji34-cutin.leaving{opacity:0;transition:opacity .07s linear}
+.battle-visual-stage.wuji34-striking{position:relative;overflow:hidden!important}
+.wuji34-caster-ghost{z-index:570!important;filter:drop-shadow(0 0 8px rgba(165,226,255,.78))}
+.wuji34-palm{position:absolute;z-index:610;width:152px;height:190px;pointer-events:none;opacity:0;transform:translate(-50%,-50%) rotate(var(--palm-rot,-14deg)) scale(.28);filter:drop-shadow(0 0 9px rgba(213,245,255,.95)) drop-shadow(0 0 22px rgba(91,187,243,.78));animation:wuji34-palm var(--palm-dur,.43s) var(--palm-delay,0ms) cubic-bezier(.12,.74,.18,1) forwards}
+.wuji34-palm svg{display:block;width:100%;height:100%;overflow:visible}
+.wuji34-palm-shape{fill:rgba(197,239,255,.2);stroke:rgba(231,250,255,.98);stroke-width:3.2;paint-order:stroke fill;filter:drop-shadow(0 0 6px rgba(170,228,255,.95))}
+.wuji34-palm.strong{width:190px;height:236px;filter:drop-shadow(0 0 12px rgba(239,253,255,1)) drop-shadow(0 0 32px rgba(83,182,245,.95))}
+.wuji34-palm.hit-2 .wuji34-palm-shape{fill:rgba(214,246,255,.26);stroke-width:4}
+.wuji34-impact{position:absolute;z-index:600;width:104px;height:104px;pointer-events:none;border-radius:50%;opacity:0;transform:translate(-50%,-50%) scale(.22);background:radial-gradient(circle,rgba(255,255,255,.98) 0 7%,rgba(183,236,255,.94) 8% 18%,rgba(75,180,239,.5) 30%,transparent 70%);box-shadow:0 0 20px rgba(162,226,255,.92);animation:wuji34-impact .36s ease-out forwards}
+.wuji34-impact:before,.wuji34-impact:after{content:"";position:absolute;left:50%;top:50%;width:155%;height:4px;transform-origin:center;background:linear-gradient(90deg,transparent,#fff 24%,#9ee3ff 52%,transparent);box-shadow:0 0 10px rgba(132,215,255,.9)}
+.wuji34-impact:before{transform:translate(-50%,-50%) rotate(22deg)}
+.wuji34-impact:after{transform:translate(-50%,-50%) rotate(-34deg)}
+.wuji34-impact.strong{width:142px;height:142px;box-shadow:0 0 30px rgba(174,233,255,1);animation-duration:.52s}
+@keyframes wuji34-palm{0%{opacity:0;transform:translate(-50%,-74%) rotate(var(--palm-rot,-14deg)) scale(.28)}14%{opacity:.92}52%{opacity:1;transform:translate(-50%,-50%) rotate(var(--palm-rot,-14deg)) scale(1)}76%{opacity:.88;transform:translate(-50%,-46%) rotate(var(--palm-rot,-14deg)) scale(1.12)}100%{opacity:0;transform:translate(-50%,-42%) rotate(var(--palm-rot,-14deg)) scale(1.32)}}
+@keyframes wuji34-impact{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}18%{opacity:1}58%{opacity:.96;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.5)}}
+@media(max-width:430px){.wuji34-palm{width:132px;height:165px}.wuji34-palm.strong{width:166px;height:207px}.wuji34-impact{width:92px;height:92px}.wuji34-impact.strong{width:126px;height:126px}}

@@ -68,7 +68,7 @@
     <header class="topbar">
       <div class="brand-wrap">
         <div class="brand">新倚天屠龙记</div>
-        <div class="subtitle">单机精简版 · V0.24.36</div>
+        <div class="subtitle">单机精简版 · V0.24.37</div>
       </div>
       <button id="saveStatus" class="save-status" type="button">已保存</button>
     </header>
@@ -83,7 +83,7 @@
       const guard=new MutationObserver(()=>{
         const el=page.querySelector('.game-info .hero-meta');
         if(el && /V0\.\d+/.test(el.textContent||'')){
-          el.textContent='V0.24.36 · 手机优先 · 本地存档';
+          el.textContent='V0.24.37 · 手机优先 · 本地存档';
           el.classList.remove('hero-meta');
           el.classList.add('game-version-meta');
         }

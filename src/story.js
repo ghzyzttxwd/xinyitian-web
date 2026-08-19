@@ -1,17 +1,19 @@
-// V0.16 主角 / 张无忌剧情成长。
+// V0.24.22 主角 / 张无忌剧情成长。
 // 张无忌节点沿用已确认原版节奏：15/35/55/75/95/110幕。
+// 用户最新明确要求：张无忌不是群攻侠客；其剧情成长技能全部按单体攻击执行。
+// 保留武当长拳→九阳神掌→九阳真气→乾坤大挪移→传奇→大挪移心法的成长线，只纠正攻击范围。
 // 玩家主角原版为25/45/65/85/105/115/125幕；单机主线止于110幕，
 // 因此前四节点保留，后三段压缩到100/105/110幕，保证神品主角在V1主线内可达。
 // 神品主角只确认“赤霄/龙渊/胜邪”神剑方向；具体战斗系数为V1实现，不冒充原版精确值。
 
 export const WUJI_STORY = [
-  {chapter:0, title:'武当长拳', rarity:5, statMul:1.00, role:'群攻', skill:{name:'武当长拳',target:'all',multiplier:1.02,rageCost:4}},
-  {chapter:15,title:'武当长拳·精进',rarity:5,statMul:1.08,role:'群攻',skill:{name:'武当长拳',target:'all',multiplier:1.10,rageCost:4}},
-  {chapter:35,title:'九阳神掌',rarity:5,statMul:1.18,role:'九阳群攻',skill:{name:'九阳神掌',target:'all',multiplier:1.20,rageCost:4}},
-  {chapter:55,title:'九阳真气',rarity:5,statMul:1.30,role:'九阳群攻',skill:{name:'九阳神掌',target:'all',multiplier:1.28,rageCost:4}},
-  {chapter:75,title:'乾坤大挪移',rarity:5,statMul:1.42,role:'群攻/挪移',skill:{name:'乾坤大挪移',target:'all',multiplier:1.36,rageCost:4}},
-  {chapter:95,title:'传奇张无忌',rarity:6,statMul:1.58,role:'传奇群攻/挪移',skill:{name:'乾坤大挪移',target:'all',multiplier:1.44,rageCost:4}},
-  {chapter:110,title:'大挪移心法',rarity:6,statMul:1.72,role:'传奇群攻/挪移',skill:{name:'大挪移心法',target:'all',multiplier:1.52,rageCost:4}},
+  {chapter:0, title:'武当长拳', rarity:5, statMul:1.00, role:'单体', skill:{name:'武当长拳',target:'one',multiplier:1.02,rageCost:4}},
+  {chapter:15,title:'武当长拳·精进',rarity:5,statMul:1.08,role:'单体',skill:{name:'武当长拳',target:'one',multiplier:1.10,rageCost:4}},
+  {chapter:35,title:'九阳神掌',rarity:5,statMul:1.18,role:'单体',skill:{name:'九阳神掌',target:'one',multiplier:1.20,rageCost:4}},
+  {chapter:55,title:'九阳真气',rarity:5,statMul:1.30,role:'单体',skill:{name:'九阳神掌',target:'one',multiplier:1.28,rageCost:4}},
+  {chapter:75,title:'乾坤大挪移',rarity:5,statMul:1.42,role:'单体/挪移',skill:{name:'乾坤大挪移',target:'one',multiplier:1.36,rageCost:4}},
+  {chapter:95,title:'传奇张无忌',rarity:6,statMul:1.58,role:'传奇单体/挪移',skill:{name:'乾坤大挪移',target:'one',multiplier:1.44,rageCost:4}},
+  {chapter:110,title:'大挪移心法',rarity:6,statMul:1.72,role:'传奇单体/挪移',skill:{name:'大挪移心法',target:'one',multiplier:1.52,rageCost:4}},
 ];
 
 export const PLAYER_STORY = [

@@ -1,4 +1,4 @@
-// V0.8 神品觉醒。
+// V0.24.24 神品觉醒。
 // 原版有明确魂石ID的侠客沿用其魂石身份；单机版把被赛季/活动切碎的来源统一成常驻碎片渠道。
 // 黄药师、洪七公为本项目补入角色，其神品技能属于本项目设计，不冒充原版配置。
 
@@ -6,6 +6,13 @@ export const SOUL_SHARDS_PER_STONE = 1000;
 export const SOUL_SHARD_PACK = 40;
 export const SOUL_SHARD_PACK_PRICE = 1000; // 单机版暂定经济值，后续统一平衡。
 export const SOUL_SHARD_PACK_LIMIT = 25;
+
+// 任务书要求保留“模拟充值礼包 → 魂石”常驻渠道，但未给原版精确礼包数量。
+// 以下为单机V1补充值：一次不直接毕业，5次正好提供1枚魂石所需的1000碎片。
+export const SOUL_RECHARGE_PRICE = 648;
+export const SOUL_RECHARGE_GEMS = 6480;
+export const SOUL_RECHARGE_CHOICE_PACKS = 5; // 每箱40碎片，即一次礼包200碎片。
+export const SOUL_RECHARGE_LIMIT = 5;
 
 export const AWAKENINGS = {
   zhangsanfeng:{heroId:'zhangsanfeng',godName:'神·张三丰',unlockChapter:95,soulId:'3010201',statMul:{atk:1.52,def:1.48,hp:1.50},speed:4,role:'神品群攻/太极',skill:{name:'太极无量',target:'all',multiplier:1.55,rageCost:4},effects:[{kind:'afterHitAtk',ratio:.06,maxStacks:5}],desc:'全体太极攻击；受击后逐步把压力转成攻击。'},
@@ -25,7 +32,7 @@ export const AWAKENINGS = {
 export function createAwakeningState(){
   const fragments={},stones={},shopBuys={};
   Object.keys(AWAKENINGS).forEach(id=>{fragments[id]=0;stones[id]=0;shopBuys[id]=0;});
-  return {fragments,stones,shopBuys,choicePacks:0};
+  return {fragments,stones,shopBuys,choicePacks:0,rechargePackBuys:0};
 }
 
 export function awakeningConfig(heroId){return AWAKENINGS[heroId]||null;}

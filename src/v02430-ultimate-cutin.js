@@ -45,13 +45,14 @@ function strike(stage,targetEls,onImpact){
     stage.appendChild(burst);
   }
 
+  const impactAt=215+Math.max(0,valid.length-1)*24;
   later(()=>{
     impactOnce();
     if(stage.animate){
       stage.animate([{transform:'translate3d(0,0,0)'},{transform:'translate3d(-5px,1px,0)'},{transform:'translate3d(6px,-1px,0)'},{transform:'translate3d(0,0,0)'}],{duration:scaled(stage,220),easing:'ease-out'});
     }
-  },scaled(stage,215));
-  later(()=>clearStage(stage),scaled(stage,620));
+  },scaled(stage,impactAt));
+  later(()=>clearStage(stage),scaled(stage,620+Math.max(0,valid.length-1)*24));
 }
 
 function playCutin(stage,skill,targetEls,onImpact,onComplete){

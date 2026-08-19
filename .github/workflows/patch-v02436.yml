@@ -1,0 +1,148 @@
+name: Apply V0.24.36 formation targeting
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-v02436.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Patch battle targeting and initiative
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text, old, new, label):
+              if text.count(old) != 1:
+                  raise SystemExit(f'{label}: expected exactly one match, got {text.count(old)}')
+              return text.replace(old, new, 1)
+
+          p=Path('src/battle.js')
+          s=p.read_text()
+
+          s=replace_once(s,
+          """function playerTeam(state) {
+            const team=state.party.filter(Boolean).map(id=>{
+              const tpl=applyWudaoProfile(state,id,storyHeroProfile(state,id,effectiveHeroProfile(state,id,HEROES[id]))), s=heroStats(state,id), effects=effectsForHero(state,id);
+              const rageEffect=effects.find(x=>x.kind==='rageBurst'),dodgeStart=effects.find(x=>x.kind==='dodgeStart');
+              return cloneFighter({ id,name:tpl.name,side:'player',...s,dodge:Number(s.dodge||0)+Number(dodgeStart?.value||0),skill:tpl.skill,
+                passive:tpl.passive||{},combat:tpl.combat||{},effects,initialRage:Number(s.initialRage||0)+Number(rageEffect?.initialRage||0) });
+            });""",
+          """function playerTeam(state) {
+            const team=state.party.map((id,slot)=>({id,slot})).filter(x=>x.id).map(({id,slot})=>{
+              const tpl=applyWudaoProfile(state,id,storyHeroProfile(state,id,effectiveHeroProfile(state,id,HEROES[id]))), s=heroStats(state,id), effects=effectsForHero(state,id);
+              const rageEffect=effects.find(x=>x.kind==='rageBurst'),dodgeStart=effects.find(x=>x.kind==='dodgeStart');
+              return cloneFighter({ id,name:tpl.name,side:'player',slot,...s,dodge:Number(s.dodge||0)+Number(dodgeStart?.value||0),skill:tpl.skill,
+                passive:tpl.passive||{},combat:tpl.combat||{},effects,initialRage:Number(s.initialRage||0)+Number(rageEffect?.initialRage||0) });
+            });""",
+          'player slot assignment')
+
+          s=replace_once(s,
+          "team.push(cloneFighter({id:`enemy-${i}`,name:`${label}${i+1}`,side:'enemy',atk,def,hp,speed:92+i*2,hit:0,dodge:0,crit:0,antiCrit:0,effects:[],combat:{},skill:{name:'合击',target:'one',multiplier:1.65,rageCost:4}}));",
+          "team.push(cloneFighter({id:`enemy-${i}`,name:`${label}${i+1}`,side:'enemy',slot:i,atk,def,hp,speed:92+i*2,hit:0,dodge:0,crit:0,antiCrit:0,effects:[],combat:{},skill:{name:'合击',target:'one',multiplier:1.65,rageCost:4}}));",
+          'enemy slot assignment')
+
+          s=replace_once(s,
+          """function pickTargets(skill,enemies){
+            const alive=living(enemies); if(!alive.length)return[];
+            if(skill.target==='all')return alive;
+            if(skill.target==='three')return [...alive].sort((a,b)=>a.hpNow-b.hpNow).slice(0,3);
+            if(skill.target==='highestAtk')return [[...alive].sort((a,b)=>b.atk-a.atk)[0]];
+            return [alive[Math.floor(Math.random()*alive.length)]];
+          }""",
+          """function slotOrderedAlive(team){return living(team).slice().sort((a,b)=>Number(a.slot??99)-Number(b.slot??99));}
+          function laneTarget(actor,enemies){
+            const alive=slotOrderedAlive(enemies);if(!alive.length)return null;
+            const start=Math.max(0,Number(actor?.slot)||0);
+            const span=Math.max(6,...enemies.map(x=>Number(x.slot??-1)+1));
+            for(let step=0;step<span;step++){
+              const wanted=(start+step)%span;
+              const target=enemies.find(x=>x.alive&&Number(x.slot??-1)===wanted);
+              if(target)return target;
+            }
+            return alive[0];
+          }
+          function pickTargets(skill,enemies,actor){
+            const alive=slotOrderedAlive(enemies); if(!alive.length)return[];
+            if(skill.target==='all')return alive;
+            if(skill.target==='three')return alive.slice(0,3);
+            if(skill.target==='highestAtk')return [[...alive].sort((a,b)=>b.atk-a.atk)[0]];
+            const target=laneTarget(actor,enemies);
+            return target?[target]:[];
+          }""",
+          'formation target selection')
+
+          s=replace_once(s,
+          "const targets=pickTargets(action,enemies); if(!targets.length)return {usedSkill:false,killed:false};",
+          "const targets=pickTargets(action,enemies,actor); if(!targets.length)return {usedSkill:false,killed:false};",
+          'pass actor slot to targeting')
+
+          s=replace_once(s,
+          "const order=[...living(player),...living(enemies)].sort((a,b)=>b.speed-a.speed||(Math.random()-.5));",
+          """const order=[];
+            const maxSlot=Math.max(5,...player.map(x=>Number(x.slot??-1)),...enemies.map(x=>Number(x.slot??-1)));
+            for(let slot=0;slot<=maxSlot;slot++){
+              const p=player.find(x=>x.alive&&Number(x.slot??-1)===slot);if(p)order.push(p);
+              const e=enemies.find(x=>x.alive&&Number(x.slot??-1)===slot);if(e)order.push(e);
+            }""",
+          'remove speed initiative')
+          p.write_text(s)
+
+          v=Path('src/v02430-battle-visual.js')
+          t=v.read_text()
+          t=replace_once(t,
+          "let timer=null,index=0,speed=1,finished=false,targetCursor={player:0,enemy:0};",
+          "let timer=null,index=0,speed=1,finished=false;",
+          'remove visual target cursor')
+          t=replace_once(t,
+          """  function chooseTargets(actor,event){
+              if(Array.isArray(event.targets)&&event.targets.length){return event.targets.map(name=>byName.get(name)).filter(Boolean);}
+              const foes=fighters.filter(x=>x.side!==actor.side&&x.alive);if(!foes.length)return[];
+              const count=Math.min(foes.length,targetCountFor(event,actor.name));
+              if(count>=foes.length)return foes;
+              const side=actor.side==='player'?'enemy':'player',start=targetCursor[side]%foes.length;targetCursor[side]++;
+              return Array.from({length:count},(_,i)=>foes[(start+i)%foes.length]);
+            }""",
+          """  function chooseTargets(actor,event){
+              if(Array.isArray(event.targets)&&event.targets.length){return event.targets.map(name=>byName.get(name)).filter(Boolean);}
+              const own=actor.side==='player'?players:enemies,foeTeam=actor.side==='player'?enemies:players;
+              const alive=foeTeam.filter(x=>x.alive);if(!alive.length)return[];
+              const count=Math.min(alive.length,targetCountFor(event,actor.name));
+              if(count>=alive.length)return alive;
+              if(count===3)return alive.slice(0,3);
+              const start=Math.max(0,own.findIndex(x=>x.name===actor.name));
+              for(let step=0;step<foeTeam.length;step++){
+                const target=foeTeam[(start+step)%foeTeam.length];
+                if(target?.alive)return [target];
+              }
+              return [alive[0]];
+            }""",
+          'visual fallback formation targeting')
+          v.write_text(t)
+
+          i=Path('index.html')
+          html=i.read_text()
+          if '02435' not in html:
+              raise SystemExit('index version marker 02435 missing')
+          i.write_text(html.replace('02435','02436'))
+          PY
+      - name: Syntax check
+        run: |
+          node --check src/battle.js
+          node --check src/v02430-battle-visual.js
+          node --check src/v02434-ultimate-cutin.js
+      - name: Commit V0.24.36
+        run: |
+          git config user.name 'xyt-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add src/battle.js src/v02430-battle-visual.js index.html
+          git diff --cached --check
+          git commit -m 'V0.24.36 lock targeting to formation slots'
+          git push origin HEAD:main

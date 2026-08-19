@@ -1,0 +1,59 @@
+/* V0.24.32 Zhang Wuji ultimate: instant cinematic still, no slow zoom. */
+.battle-modal.wuji32-cutin-host{overflow:visible!important}
+.wuji32-cutin{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;z-index:2147483000;overflow:hidden;pointer-events:none;background:#06111a;isolation:isolate}
+.wuji32-backdrop{position:absolute;inset:0;z-index:0;background:
+  radial-gradient(circle at 68% 30%,rgba(87,168,203,.26),transparent 30%),
+  radial-gradient(circle at 26% 72%,rgba(24,118,144,.25),transparent 32%),
+  linear-gradient(180deg,#102b39 0%,#071722 52%,#031018 100%);
+  animation:wuji32-bg .52s linear forwards}
+.wuji32-moon{position:absolute;z-index:1;right:-9vw;top:-12vw;width:58vw;height:58vw;max-width:420px;max-height:420px;border-radius:50%;
+  background:radial-gradient(circle at 38% 36%,rgba(232,249,255,.9),rgba(141,203,220,.55) 37%,rgba(69,134,157,.2) 64%,transparent 68%);
+  box-shadow:0 0 42px rgba(118,202,224,.25);opacity:.68}
+.wuji32-energy{position:absolute;z-index:1;border:2px solid rgba(134,222,241,.28);border-radius:50%;filter:drop-shadow(0 0 8px rgba(77,185,216,.35))}
+.wuji32-energy.e1{left:-20vw;bottom:10vh;width:74vw;height:31vw;transform:rotate(-12deg)}
+.wuji32-energy.e2{right:-24vw;bottom:27vh;width:70vw;height:28vw;transform:rotate(17deg);opacity:.55}
+.wuji32-sparks{position:absolute;inset:0;z-index:2;opacity:.55;background:
+  radial-gradient(circle at 18% 28%,rgba(202,244,255,.82) 0 1px,transparent 2px),
+  radial-gradient(circle at 72% 18%,rgba(202,244,255,.8) 0 1px,transparent 2px),
+  radial-gradient(circle at 41% 62%,rgba(202,244,255,.72) 0 1px,transparent 2px),
+  radial-gradient(circle at 83% 68%,rgba(202,244,255,.65) 0 1px,transparent 2px),
+  radial-gradient(circle at 27% 81%,rgba(202,244,255,.7) 0 1px,transparent 2px);
+  background-size:160px 190px,210px 170px,190px 230px,230px 210px,180px 160px}
+.wuji32-figure{position:absolute;z-index:3;right:-6vw;bottom:-4vh;width:92vw;height:86vh;
+  background:url('./assets/original/figure-wuji.webp') right bottom/contain no-repeat;
+  will-change:opacity,transform,filter}
+.wuji32-skill-title{position:absolute;z-index:6;left:7vw;bottom:13vh;display:flex;flex-direction:column;align-items:flex-start;
+  font-family:"STKaiti","KaiTi","Noto Serif CJK SC",serif;font-weight:900;line-height:.86;color:#f5fbff;
+  text-shadow:0 3px 5px rgba(0,0,0,.96),1px 1px 0 rgba(17,42,55,.8),0 0 12px rgba(206,242,255,.45);
+  transform:rotate(-3deg);will-change:opacity,transform,filter}
+.wuji32-skill-title span{display:block;font-size:clamp(50px,15vw,88px);letter-spacing:.04em;white-space:nowrap}
+.wuji32-skill-title span+span{margin-left:10vw;margin-top:.04em}
+.wuji32-name{position:absolute;z-index:6;right:5vw;bottom:6vh;font-size:clamp(14px,4vw,22px);font-weight:800;letter-spacing:.28em;color:rgba(226,246,252,.78);
+  text-shadow:0 2px 4px #000}
+.wuji32-cutin.leaving{opacity:0;transition:opacity .07s linear}
+.battle-visual-stage.wuji32-striking{position:relative;overflow:hidden!important}
+.wuji32-strike-fx{position:absolute;z-index:520;pointer-events:none}
+.wuji32-beam{width:96px;height:9px;border-radius:999px;transform-origin:0 50%;opacity:0;
+  background:linear-gradient(90deg,#fff 0 8%,#d9f6ff 18%,#79cdff 48%,rgba(59,139,216,.5) 74%,transparent);
+  box-shadow:0 0 11px rgba(183,235,255,.95),0 0 28px rgba(67,164,238,.8);
+  animation:wuji32-beam var(--dur) var(--delay) cubic-bezier(.14,.82,.18,1) forwards}
+.wuji32-burst{width:132px;height:132px;transform:translate(-50%,-50%) scale(.18);border-radius:50%;opacity:0;
+  background:radial-gradient(circle,rgba(255,255,255,.98) 0 5%,rgba(164,226,255,.9) 6% 18%,rgba(69,157,228,.48) 29%,transparent 68%);
+  box-shadow:0 0 28px rgba(136,214,255,.9);animation:wuji32-burst .36s ease-out forwards}
+.wuji32-burst:before,.wuji32-burst:after{content:"";position:absolute;left:50%;top:50%;width:150%;height:4px;
+  background:linear-gradient(90deg,transparent,#effcff 24%,#79ceff 50%,transparent);
+  box-shadow:0 0 11px rgba(124,207,255,.9);transform-origin:center}
+.wuji32-burst:before{transform:translate(-50%,-50%) rotate(19deg)}
+.wuji32-burst:after{transform:translate(-50%,-50%) rotate(-27deg)}
+@keyframes wuji32-bg{0%{opacity:0}8%{opacity:1}86%{opacity:1}100%{opacity:0}}
+@keyframes wuji32-beam{0%{opacity:0;transform:translate3d(0,0,0) scaleX(.08)}16%{opacity:1}70%{opacity:1;transform:translate3d(var(--dx),var(--dy),0) scaleX(1.26)}100%{opacity:0;transform:translate3d(var(--dx),var(--dy),0) scaleX(.78)}}
+@keyframes wuji32-burst{0%{opacity:0;transform:translate(-50%,-50%) scale(.18)}22%{opacity:1}58%{opacity:.95;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.55)}}
+@media(max-width:430px){
+  .wuji32-figure{right:-12vw;bottom:-3vh;width:102vw;height:84vh}
+  .wuji32-skill-title{left:5vw;bottom:14vh}
+  .wuji32-skill-title span{font-size:clamp(48px,16vw,72px)}
+  .wuji32-skill-title span+span{margin-left:12vw}
+  .wuji32-name{right:4vw;bottom:5vh}
+  .wuji32-burst{width:112px;height:112px}
+  .wuji32-beam{width:78px;height:7px}
+}

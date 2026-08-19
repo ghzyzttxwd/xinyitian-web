@@ -4,7 +4,7 @@
 const battleBody=document.querySelector('#battleDialogBody');
 if(!battleBody) throw new Error('battle body missing');
 
-const PARTS=Array.from({length:6},(_,i)=>`./assets/original/wuji-frames/atlas.part.${String(i).padStart(2,'0')}.txt?v=02427`);
+const PARTS=['00','01','02a','02b','03','04','05'].map(id=>`./assets/original/wuji-frames/atlas.part.${id}.txt?v=02427`);
 const ATLAS_W=384,ATLAS_H=194,RENDER_SCALE=1.15;
 const ACTIONS={
   stand:{loop:true,interval:260,frames:[

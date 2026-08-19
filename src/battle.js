@@ -53,10 +53,10 @@ function cloneFighter(base) {
 }
 
 function playerTeam(state) {
-  const team=state.party.filter(Boolean).map(id=>{
+  const team=state.party.map((id,slot)=>({id,slot})).filter(x=>x.id).map(({id,slot})=>{
     const tpl=applyWudaoProfile(state,id,storyHeroProfile(state,id,effectiveHeroProfile(state,id,HEROES[id]))), s=heroStats(state,id), effects=effectsForHero(state,id);
     const rageEffect=effects.find(x=>x.kind==='rageBurst'),dodgeStart=effects.find(x=>x.kind==='dodgeStart');
-    return cloneFighter({ id,name:tpl.name,side:'player',...s,dodge:Number(s.dodge||0)+Number(dodgeStart?.value||0),skill:tpl.skill,
+    return cloneFighter({ id,name:tpl.name,side:'player',slot,...s,dodge:Number(s.dodge||0)+Number(dodgeStart?.value||0),skill:tpl.skill,
       passive:tpl.passive||{},combat:tpl.combat||{},effects,initialRage:Number(s.initialRage||0)+Number(rageEffect?.initialRage||0) });
   });
   const maxAtk=Math.max(0,...team.map(x=>x.atk));
@@ -69,17 +69,30 @@ function makeEnemyTeam(power,label='江湖敌手') {
   const count=6, tunedPower=power*ENEMY_POWER_MULTIPLIER, each=tunedPower/count, team=[];
   for(let i=0;i<count;i++){
     const scale=.93+i*.035, atk=Math.max(60,Math.round(each*.155*scale)), def=Math.max(40,Math.round(each*.087*scale)), hp=Math.max(800,Math.round(each*.83*scale));
-    team.push(cloneFighter({id:`enemy-${i}`,name:`${label}${i+1}`,side:'enemy',atk,def,hp,speed:92+i*2,hit:0,dodge:0,crit:0,antiCrit:0,effects:[],combat:{},skill:{name:'合击',target:'one',multiplier:1.65,rageCost:4}}));
+    team.push(cloneFighter({id:`enemy-${i}`,name:`${label}${i+1}`,side:'enemy',slot:i,atk,def,hp,speed:92+i*2,hit:0,dodge:0,crit:0,antiCrit:0,effects:[],combat:{},skill:{name:'合击',target:'one',multiplier:1.65,rageCost:4}}));
   }
   return team;
 }
 
-function pickTargets(skill,enemies){
-  const alive=living(enemies); if(!alive.length)return[];
+function slotOrderedAlive(team){return living(team).slice().sort((a,b)=>Number(a.slot??99)-Number(b.slot??99));}
+function laneTarget(actor,enemies){
+  const alive=slotOrderedAlive(enemies);if(!alive.length)return null;
+  const start=Math.max(0,Number(actor?.slot)||0);
+  const span=Math.max(6,...enemies.map(x=>Number(x.slot??-1)+1));
+  for(let step=0;step<span;step++){
+    const wanted=(start+step)%span;
+    const target=enemies.find(x=>x.alive&&Number(x.slot??-1)===wanted);
+    if(target)return target;
+  }
+  return alive[0];
+}
+function pickTargets(skill,enemies,actor){
+  const alive=slotOrderedAlive(enemies); if(!alive.length)return[];
   if(skill.target==='all')return alive;
-  if(skill.target==='three')return [...alive].sort((a,b)=>a.hpNow-b.hpNow).slice(0,3);
+  if(skill.target==='three')return alive.slice(0,3);
   if(skill.target==='highestAtk')return [[...alive].sort((a,b)=>b.atk-a.atk)[0]];
-  return [alive[Math.floor(Math.random()*alive.length)]];
+  const target=laneTarget(actor,enemies);
+  return target?[target]:[];
 }
 
 function damage(attacker,target,multiplier=1,ignoreDef=0){
@@ -202,7 +215,7 @@ function performOne(actor,own,enemies,log,round,forceSkill=false,forceNormal=fal
   const skill=actor.skill||{name:'绝技',target:'one',multiplier:1.5,rageCost:4};
   const useSkill=forceSkill || (!forceNormal&&actor.rage>=(skill.rageCost||4));
   const action=useSkill?skill:{name:'普通攻击',target:'one',multiplier:1};
-  const targets=pickTargets(action,enemies); if(!targets.length)return {usedSkill:false,killed:false};
+  const targets=pickTargets(action,enemies,actor); if(!targets.length)return {usedSkill:false,killed:false};
   let skillMultiplier=action.multiplier||1;
   if(useSkill&&actor.nextSkillBonus){skillMultiplier*=1+Number(actor.nextSkillBonus||0);actor.nextSkillBonus=0;}
   if(actor.innerNextDamageBonus){skillMultiplier*=1+Number(actor.innerNextDamageBonus||0);actor.innerNextDamageBonus=0;}
@@ -290,7 +303,12 @@ function simulate(player,enemies,maxRounds=20){
     if(!living(player).length||!living(enemies).length)break;
     log.push(`—— 第${round}回合 ——`);
     for(const f of [...living(player),...living(enemies)]){f.rageTransferUsed=0;f.actedThisRound=false;f.firstHitTakenThisRound=false;applyYinYangRound(f,round);}
-    const order=[...living(player),...living(enemies)].sort((a,b)=>b.speed-a.speed||(Math.random()-.5));
+    const order=[];
+  const maxSlot=Math.max(5,...player.map(x=>Number(x.slot??-1)),...enemies.map(x=>Number(x.slot??-1)));
+  for(let slot=0;slot<=maxSlot;slot++){
+    const p=player.find(x=>x.alive&&Number(x.slot??-1)===slot);if(p)order.push(p);
+    const e=enemies.find(x=>x.alive&&Number(x.slot??-1)===slot);if(e)order.push(e);
+  }
     for(const actor of order){if(!actor.alive)continue;if(actor.side==='player')act(actor,player,enemies,log,round);else act(actor,enemies,player,log,round);if(!living(player).length||!living(enemies).length)break;}
   }
   const win=living(player).length>0&&living(enemies).length===0;

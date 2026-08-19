@@ -75,7 +75,7 @@ function targetCountFor(event,actor){
 function buildController(stage,events,players,enemies,finalBox,outcome){
   const fighters=[...players,...enemies];
   const byName=new Map(fighters.map(x=>[x.name,x]));
-  let timer=null,index=0,speed=1,finished=false,targetCursor={player:0,enemy:0};
+  let timer=null,index=0,speed=1,finished=false;
   stage.dataset.bvSpeedLevel='1';
   const roundEl=stage.querySelector('[data-bv-round]'),skillEl=stage.querySelector('[data-bv-skill]'),ticker=stage.querySelector('[data-bv-ticker]');
 
@@ -94,11 +94,17 @@ function buildController(stage,events,players,enemies,finalBox,outcome){
   function setTicker(text){if(ticker)ticker.textContent=text||'';}
   function chooseTargets(actor,event){
     if(Array.isArray(event.targets)&&event.targets.length){return event.targets.map(name=>byName.get(name)).filter(Boolean);}
-    const foes=fighters.filter(x=>x.side!==actor.side&&x.alive);if(!foes.length)return[];
-    const count=Math.min(foes.length,targetCountFor(event,actor.name));
-    if(count>=foes.length)return foes;
-    const side=actor.side==='player'?'enemy':'player',start=targetCursor[side]%foes.length;targetCursor[side]++;
-    return Array.from({length:count},(_,i)=>foes[(start+i)%foes.length]);
+    const own=actor.side==='player'?players:enemies,foeTeam=actor.side==='player'?enemies:players;
+    const alive=foeTeam.filter(x=>x.alive);if(!alive.length)return[];
+    const count=Math.min(alive.length,targetCountFor(event,actor.name));
+    if(count>=alive.length)return alive;
+    if(count===3)return alive.slice(0,3);
+    const start=Math.max(0,own.findIndex(x=>x.name===actor.name));
+    for(let step=0;step<foeTeam.length;step++){
+      const target=foeTeam[(start+step)%foeTeam.length];
+      if(target?.alive)return [target];
+    }
+    return [alive[0]];
   }
   function addImpact(el,kind='slash',crit=false){
     if(!el)return;

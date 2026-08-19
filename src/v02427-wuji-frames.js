@@ -86,7 +86,7 @@ function returnIdle(fighter){
 }
 function reactToFighter(fighter){
   if(!fighter?.isConnected)return;
-  fighter.classList.add('wuji-frame-ready');
+  if(!fighter.classList.contains('wuji-frame-ready'))fighter.classList.add('wuji-frame-ready');
   if(fighter.classList.contains('dead')){play(fighter,'hit1',{hold:true});return;}
   if(fighter.classList.contains('hit')||fighter.classList.contains('fall')){
     play(fighter,'hit1',{onDone:()=>setTimeout(()=>returnIdle(fighter),30)});return;
@@ -136,6 +136,7 @@ async function loadAtlas(){
   }));
   const binary=atob(chunks.join(''));
   const bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  if(bytes.length!==24170||binary.slice(0,4)!=='RIFF'||binary.slice(8,12)!=='WEBP')throw new Error('Wuji atlas integrity check failed');
   atlasUrl=URL.createObjectURL(new Blob([bytes],{type:'image/webp'}));
   scan();
 }

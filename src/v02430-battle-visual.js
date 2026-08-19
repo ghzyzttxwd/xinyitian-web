@@ -294,7 +294,7 @@ function buildController(stage,events,players,enemies,finalBox,outcome){
   function delayFor(event){
     if(event.type==='round')return scaled(330);
     if(event.type==='action'){
-      if(!event.normal&&event.actor==='张无忌')return scaled(1600);
+      if(!event.normal&&event.actor==='张无忌')return scaled(2150);
       return scaled(event.normal?680:900);
     }
     return scaled(420);

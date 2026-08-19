@@ -18,26 +18,33 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          def replace_once(text,old,new,label):
-              n=text.count(old)
-              if n!=1: raise SystemExit(f'{label}: expected 1 match, got {n}')
-              return text.replace(old,new,1)
+          import re
 
           p=Path('src/battle.js')
           s=p.read_text()
-          s=replace_once(s,
-            "function act(actor,own,enemies,log,round){",
-            "function act(actor,own,enemies,log,round,deferAssists=false){",
-            'act defer parameter')
-          s=replace_once(s,
-            "  triggerAssists(actor,own,enemies,log,round);",
-            "  if(!deferAssists)triggerAssists(actor,own,enemies,log,round);",
-            'defer immediate assists')
-          old="""    // V0.24.37: initiative is formation order only. No speed/random/interleaving.
-  // Player slots 1→6 act first, then enemy slots 1→6.
-  const order=[...slotOrderedAlive(player),...slotOrderedAlive(enemies)];
-    for(const actor of order){if(!actor.alive)continue;if(actor.side==='player')act(actor,player,enemies,log,round);else act(actor,enemies,player,log,round);if(!living(player).length||!living(enemies).length)break;}"""
-          new="""    // V0.24.38: strict normal-turn order. Assists are deferred until the side's 1→6 normal turns finish.
+          if s.count("function act(actor,own,enemies,log,round){") != 1:
+              raise SystemExit('act signature mismatch')
+          s=s.replace(
+              "function act(actor,own,enemies,log,round){",
+              "function act(actor,own,enemies,log,round,deferAssists=false){",
+              1
+          )
+          if s.count("  triggerAssists(actor,own,enemies,log,round);") != 1:
+              raise SystemExit('immediate assist call mismatch')
+          s=s.replace(
+              "  triggerAssists(actor,own,enemies,log,round);",
+              "  if(!deferAssists)triggerAssists(actor,own,enemies,log,round);",
+              1
+          )
+
+          pattern=re.compile(
+              r"\s*// V0\.24\.37: initiative is formation order only\. No speed/random/interleaving\.\s*"
+              r"// Player slots 1→6 act first, then enemy slots 1→6\.\s*"
+              r"const order=\[\.\.\.slotOrderedAlive\(player\),\.\.\.slotOrderedAlive\(enemies\)\];\s*"
+              r"for\(const actor of order\)\{if\(!actor\.alive\)continue;if\(actor\.side==='player'\)act\(actor,player,enemies,log,round\);else act\(actor,enemies,player,log,round\);if\(!living\(player\)\.length\|\|!living\(enemies\)\.length\)break;\}"
+          )
+          replacement="""
+    // V0.24.38: strict normal-turn order. Assists are deferred until this side finishes slots 1→6.
     const playerOrder=slotOrderedAlive(player);
     for(const actor of playerOrder){
       if(!actor.alive)continue;
@@ -45,7 +52,9 @@ jobs:
       if(!living(player).length||!living(enemies).length)break;
     }
     if(living(player).length&&living(enemies).length){
-      for(const acted of playerOrder){if(acted.actedThisRound&&acted.alive&&living(enemies).length)triggerAssists(acted,player,enemies,log,round);}
+      for(const acted of playerOrder){
+        if(acted.actedThisRound&&acted.alive&&living(enemies).length)triggerAssists(acted,player,enemies,log,round);
+      }
     }
     if(living(player).length&&living(enemies).length){
       const enemyOrder=slotOrderedAlive(enemies);
@@ -55,15 +64,20 @@ jobs:
         if(!living(player).length||!living(enemies).length)break;
       }
       if(living(player).length&&living(enemies).length){
-        for(const acted of enemyOrder){if(acted.actedThisRound&&acted.alive&&living(player).length)triggerAssists(acted,enemies,player,log,round);}
+        for(const acted of enemyOrder){
+          if(acted.actedThisRound&&acted.alive&&living(player).length)triggerAssists(acted,enemies,player,log,round);
+        }
       }
     }"""
-          s=replace_once(s,old,new,'strict side order with deferred assists')
+          s,n=pattern.subn(replacement,s,count=1)
+          if n!=1:
+              raise SystemExit(f'initiative block mismatch: {n}')
           p.write_text(s)
 
           i=Path('index.html')
           html=i.read_text()
-          if '02437' not in html: raise SystemExit('index 02437 marker missing')
+          if '02437' not in html:
+              raise SystemExit('index 02437 marker missing')
           i.write_text(html.replace('02437','02438'))
           PY
       - name: Syntax and diff check

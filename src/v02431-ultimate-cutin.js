@@ -1,5 +1,5 @@
 // V0.24.31: Zhang Wuji ultimate cut-in top-layer fix + dominant vertical skill title.
-// The cut-in is mounted inside the native battle <dialog>, otherwise the dialog top layer hides body-level overlays.
+// The cut-in is mounted inside the battle overlay itself so it shares the overlay stacking context and cannot be hidden behind it.
 // Visuals never choose targets; v02430-battle-visual still passes authoritative target elements.
 const battleBody=document.querySelector('#battleDialogBody');
 const battleDialog=document.querySelector('#battleDialog');
@@ -80,8 +80,8 @@ function playCutin(stage,skill,targetEls,onImpact,onComplete){
     vertical.appendChild(span);
   }
 
-  // Critical V0.24.31 fix: native <dialog> is in the browser top layer.
-  // A body-level fixed overlay sits behind it regardless of z-index, so mount the cut-in inside the dialog itself.
+  // Critical V0.24.31 fix: the battle shell is its own high-priority overlay/stacking context.
+  // Mount the cut-in inside that overlay instead of on document.body so the battle layer cannot cover it.
   battleDialog.appendChild(overlay);
 
   const rate=speedRate(stage),figure=overlay.querySelector('.wuji31-figure');

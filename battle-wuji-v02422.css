@@ -1,0 +1,52 @@
+/* V0.24.22 Zhang Wuji: single-target skill presentation.
+   The battle calculation remains authoritative; this file only suppresses the old full-field wave
+   while Zhang Wuji is casting and styles the full-body dash clone. */
+.battle-v240.wuji-v02422-cast .bv-skill-wave{display:none!important}
+.battle-v240 .wuji-v02422-ghost{
+  position:absolute!important;
+  z-index:180!important;
+  margin:0!important;
+  border:0!important;
+  border-radius:0!important;
+  overflow:visible!important;
+  box-shadow:none!important;
+  pointer-events:none!important;
+  background:url('./assets/original/figure-wuji.webp') center bottom/contain no-repeat!important;
+  filter:drop-shadow(0 8px 8px rgba(0,0,0,.68)) drop-shadow(0 0 8px rgba(255,211,118,.42))!important;
+  transform-origin:50% 88%!important;
+  will-change:transform,filter,opacity;
+}
+.battle-v240 .wuji-v02422-ghost>span{display:none!important}
+.battle-v240 .wuji-v02422-fist{
+  position:absolute;
+  z-index:190;
+  left:50%;
+  top:50%;
+  width:74px;
+  height:32px;
+  transform:translate(-50%,-50%);
+  border-radius:50%;
+  pointer-events:none;
+  background:radial-gradient(ellipse at 42% 50%,rgba(255,249,222,.96) 0 8%,rgba(244,200,104,.68) 18%,rgba(201,119,48,.25) 38%,transparent 68%);
+  box-shadow:0 0 14px rgba(255,205,99,.55);
+  animation:wuji-v02422-fist .34s ease-out forwards;
+}
+.battle-v240 .wuji-v02422-fist:before,
+.battle-v240 .wuji-v02422-fist:after{
+  content:"";
+  position:absolute;
+  left:10%;
+  right:5%;
+  top:50%;
+  height:3px;
+  border-radius:50%;
+  background:linear-gradient(90deg,transparent,rgba(255,247,214,.96),rgba(231,172,76,.72),transparent);
+  box-shadow:0 0 7px rgba(255,216,127,.8);
+}
+.battle-v240 .wuji-v02422-fist:before{transform:rotate(-9deg)}
+.battle-v240 .wuji-v02422-fist:after{transform:rotate(11deg);opacity:.72}
+@keyframes wuji-v02422-fist{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.35)}
+  28%{opacity:1;transform:translate(-50%,-50%) scale(.9)}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(1.45)}
+}

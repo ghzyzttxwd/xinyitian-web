@@ -38,6 +38,9 @@ function effectOf(fighter,kind){ return fighter.effects?.find(x=>x.kind===kind) 
 function living(team){return team.filter(x=>x.alive);}
 function circleActive(team){return THREE_DU.every(id=>living(team).some(x=>x.id===id));}
 function controlCount(f){return CONTROL_TYPES.reduce((n,k)=>n+(Number(f.statuses?.[k]||0)>0?1:0),0);}
+function hpPct(f){return Math.max(0,Math.min(100,Number(f?.hp||0)>0?Number(f.hpNow||0)/Number(f.hp)*100:0));}
+function visualState(f){return {name:f.name,hpPct:hpPct(f),rage:Math.max(0,Math.min(8,Number(f.rage||0))),alive:!!f.alive};}
+function visualMarker(payload){return `<!--XYT:${encodeURIComponent(JSON.stringify(payload))}-->`;}
 
 function cloneFighter(base) {
   const rage=base.initialRage??2;
@@ -210,13 +213,16 @@ function performOne(actor,own,enemies,log,round,forceSkill=false,forceNormal=fal
     else actor.rage-=cost;
   }else if(!noNormalRage&&Number(actor.statuses?.seal||0)<=0)actor.rage=Math.min(8,actor.rage+2);
   let killed=false,total=0,misses=0,crits=0,guarded=0;
+  const visualHits=[];
   const pierce=effectOf(actor,'ignoreDef');
   for(const target of targets){
+    const beforeHp=Number(target.hpNow||0),beforeAlive=!!target.alive;
     let targetMul=skillMultiplier;
     const missing=effectOf(actor,'missingHpDamage');if(missing){const steps=Math.floor(Math.max(0,1-target.hpNow/target.hp)*10);targetMul*=1+steps*Number(missing.bonusPer10||0);}
     if(useSkill&&actor.combat?.buddhaSkillBonusPerStack&&circleActive(own))targetMul*=1+Number(target.buddha||0)*Number(actor.combat.buddhaSkillBonusPerStack||0);
-    const hit=damage(actor,target,targetMul,(action.ignoreDef||0)+Number(pierce?.value||0));if(hit.miss){misses++;triggerInnerReaction(target,'dodge',enemies,round,log);continue;}
-    if(tryVajraGuard(actor,target,log)||tryDamageImmunity(target,round,log)){guarded++;continue;}
+    const hit=damage(actor,target,targetMul,(action.ignoreDef||0)+Number(pierce?.value||0));
+    if(hit.miss){misses++;triggerInnerReaction(target,'dodge',enemies,round,log);visualHits.push({name:target.name,damage:0,hpPct:hpPct(target),alive:!!target.alive,miss:true,guarded:false,crit:false});continue;}
+    if(tryVajraGuard(actor,target,log)||tryDamageImmunity(target,round,log)){guarded++;visualHits.push({name:target.name,damage:0,hpPct:hpPct(target),alive:!!target.alive,miss:false,guarded:true,crit:false});continue;}
     const wasAlive=target.alive,flat=useSkill?Number(action.flatDamage||0):0;let amount=hit.amount+flat;amount=adjustBigHit(target,amount,log);applyDamage(target,amount,log);total+=amount;if(amount>0)afterDirectHit(target,log);if(hit.crit){crits++;if(target.alive)triggerInnerReaction(target,'critTaken',enemies,round,log);}
     applyThreeDuAfterHit(actor,target,useSkill,own,log);
     const execute=effectOf(actor,'execute');if(target.alive&&execute&&target.hpNow/target.hp<=execute.threshold&&Math.random()<execute.chance){log.push(`${actor.name}的【屠龙刀】触发斩杀！`);applyDamage(target,target.hpNow,log);}
@@ -225,10 +231,13 @@ function performOne(actor,own,enemies,log,round,forceSkill=false,forceNormal=fal
     const healHit=effectOf(target,'healOnHit');if(healHit&&Math.random()<healHit.chance)healTeam(enemies,target,healHit.ratio,log);
     const grow=effectOf(target,'afterHitAtk');if(grow&&target.alive){target.godAtkStacks=Number(target.godAtkStacks||0);if(target.godAtkStacks<grow.maxStacks){target.atk=Math.round(target.atk*(1+grow.ratio));target.godAtkStacks+=1;}}
     if(wasAlive&&!target.alive)killed=true;
+    visualHits.push({name:target.name,damage:Math.max(0,beforeHp-Number(target.hpNow||0)),rawDamage:Math.max(0,Number(amount||0)),hpPct:hpPct(target),alive:!!target.alive,wasAlive:beforeAlive,miss:false,guarded:false,crit:!!hit.crit});
   }
-  if(!useSkill){const splash=effectOf(actor,'splashAdjacent');if(splash&&Math.random()<Number(splash.chance||0)){const others=living(enemies).filter(x=>!targets.includes(x));if(others.length){const t=others[Math.floor(Math.random()*others.length)],h=damage(actor,t,Number(splash.ratio||0),0);if(!h.miss&&!tryVajraGuard(actor,t,log)&&!tryDamageImmunity(t,round,log)){let a=adjustBigHit(t,h.amount,log);applyDamage(t,a,log);if(a>0)afterDirectHit(t,log);total+=a;log.push(`${actor.name}触发【白蟒鞭法】，波及${t.name} ${a.toLocaleString()}伤害。`);if(!t.alive)triggerDeathCurse(t,own,round,log);}}}}
+  if(!useSkill){const splash=effectOf(actor,'splashAdjacent');if(splash&&Math.random()<Number(splash.chance||0)){const others=living(enemies).filter(x=>!targets.includes(x));if(others.length){const t=others[Math.floor(Math.random()*others.length)],beforeHp=Number(t.hpNow||0),h=damage(actor,t,Number(splash.ratio||0),0);if(!h.miss&&!tryVajraGuard(actor,t,log)&&!tryDamageImmunity(t,round,log)){let a=adjustBigHit(t,h.amount,log);applyDamage(t,a,log);if(a>0)afterDirectHit(t,log);total+=a;log.push(`${actor.name}触发【白蟒鞭法】，波及${t.name} ${a.toLocaleString()}伤害。`);if(!t.alive)triggerDeathCurse(t,own,round,log);visualHits.push({name:t.name,damage:Math.max(0,beforeHp-Number(t.hpNow||0)),rawDamage:Math.max(0,Number(a||0)),hpPct:hpPct(t),alive:!!t.alive,wasAlive:true,miss:false,guarded:false,crit:!!h.crit,splash:true});}}}}
   if(useSkill)applySkillAbnormals(actor,targets,enemies,action,round,log);
-  log.push(`${actor.name}${useSkill?`施展【${action.name}】`:'普通攻击'}，造成 ${total.toLocaleString()} 伤害${crits?'，触发暴击':''}${misses?`，${misses}次闪避`:''}${guarded?`，${guarded}次被护盾挡下`:''}。${killed?' 有敌人倒下！':''}`);
+  const actionText=`${actor.name}${useSkill?`施展【${action.name}】`:'普通攻击'}，造成 ${total.toLocaleString()} 伤害${crits?'，触发暴击':''}${misses?`，${misses}次闪避`:''}${guarded?`，${guarded}次被护盾挡下`:''}。${killed?' 有敌人倒下！':''}`;
+  const marker=visualMarker({v:1,type:'action',round,actor:actor.name,skill:useSkill?action.name:'',normal:!useSkill,targets:targets.map(x=>x.name),hits:visualHits,states:[...own,...enemies].map(visualState),damage:total,crits,misses,guarded,killed});
+  log.push(`${actionText}${marker}`);
   if(useSkill&&skill.refundOnKill&&killed)actor.rage+=skill.rageCost||4;
   const steal=effectOf(actor,'lifesteal');if(steal&&total>0&&actor.alive){const heal=Math.round(total*steal.ratio);actor.hpNow=Math.min(actor.hp,actor.hpNow+heal);log.push(`${actor.name}凭【${steal.label||'玄铁指环'}】吸血 ${heal.toLocaleString()}。`);}
   if(useSkill){

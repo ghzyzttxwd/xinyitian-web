@@ -1,0 +1,36 @@
+/* V0.24.28: original APK stand/attack/hit frames with corrected travel choreography for Zhang Wuji. */
+.battle-v240 .bv-fighter[data-fighter-id="wuji"].wuji-frame-ready .bv-portrait,
+.battle-v240 .bv-dash-ghost.actor-wuji.wuji-frame-ready{
+  background:none!important;
+  background-image:none!important;
+  overflow:visible!important;
+}
+.battle-v240 .bv-fighter[data-fighter-id="wuji"].wuji-frame-ready .bv-portrait>span.wuji-frame-sprite,
+.battle-v240 .bv-dash-ghost.actor-wuji.wuji-frame-ready>span.wuji-frame-sprite{
+  display:block!important;
+  position:absolute!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  color:transparent!important;
+  font-size:0!important;
+  line-height:0!important;
+  text-shadow:none!important;
+  box-shadow:none!important;
+  pointer-events:none!important;
+  max-width:none!important;
+  max-height:none!important;
+  transform:none!important;
+  transform-origin:0 0!important;
+  image-rendering:auto;
+}
+.battle-v240 .bv-dash-ghost.actor-wuji.wuji-frame-ready{
+  background-color:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+.battle-v240 .bv-fighter[data-fighter-id="wuji"].wuji-frame-ready.dead .bv-portrait>span.wuji-frame-sprite{
+  filter:grayscale(.35) brightness(.72);
+}

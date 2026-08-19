@@ -111,15 +111,17 @@ function homeCast(stage,targetEls,onImpact){
     ghost.remove();source.style.visibility='';actorEl.classList.remove('bv-moving');stage.classList.remove('wuji34-striking');
   };
   const onContact=()=>{
+    if(contactCount>=strikeCount)return;
     if(fallbackContact)clearTimeout(fallbackContact);fallbackContact=null;
-    contactCount+=1;
+    contactCount=strikeCount;
     if(contactCount===1){spawnPalm(stage,targetEls,1,false);return;}
     spawnPalm(stage,targetEls,2,true);settle();
   };
   const armFallback=()=>{
     clearFallback();
-    fallbackContact=setTimeout(onContact,scaled(stage,250));
-    fallbackEnd=setTimeout(onStrikeEnd,scaled(stage,390));
+    // Keep fallbacks behind the real att1 contact/end frames even at 5x, where frame playback has a 22ms floor.
+    fallbackContact=setTimeout(onContact,scaled(stage,360));
+    fallbackEnd=setTimeout(onStrikeEnd,scaled(stage,620));
   };
   const beginStrike=()=>{
     if(cleaned)return;

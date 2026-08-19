@@ -7,7 +7,7 @@
   <title>新倚天屠龙记·单机精简版</title>
   <script>
   (()=>{
-    const RESET_KEY='xyt-cache-reset-02423';
+    const RESET_KEY='xyt-cache-reset-02424';
     if('serviceWorker' in navigator){
       if(!sessionStorage.getItem(RESET_KEY)){
         sessionStorage.setItem(RESET_KEY,'1');
@@ -16,7 +16,7 @@
           ('caches' in window)?caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('xinyitian-')).map(k=>caches.delete(k)))):Promise.resolve()
         ]).then(()=>{
           const u=new URL(location.href);
-          u.searchParams.set('_xyt','02423');
+          u.searchParams.set('_xyt','02424');
           location.replace(u.href);
         }).catch(()=>{});
       }
@@ -42,29 +42,29 @@
     }
   })();
   </script>
-  <link rel="manifest" href="./manifest.webmanifest?v=02423" />
-  <link rel="stylesheet" href="./styles.css?v=02423" />
-  <link rel="stylesheet" href="./scenes.css?v=02423" />
-  <link rel="stylesheet" href="./jianghu-nav.css?v=02423" />
-  <link rel="stylesheet" href="./mall-bulk.css?v=02423" />
-  <link rel="stylesheet" href="./power-feedback.css?v=02423" />
-  <link rel="stylesheet" href="./v02413-ui.css?v=02423" />
-  <link rel="stylesheet" href="./battle-visual.css?v=02423" />
-  <link rel="stylesheet" href="./battle-polish.css?v=02423" />
-  <link rel="stylesheet" href="./battle-v240.css?v=02423" />
-  <link rel="stylesheet" href="./battle-figures-v02419.css?v=02423" />
-  <link rel="stylesheet" href="./battle-wuji-v02422.css?v=02423" />
-  <link rel="stylesheet" href="./battle-v02423.css?v=02423" />
-  <link rel="stylesheet" href="./battle-speed.css?v=02423" />
-  <link rel="stylesheet" href="./battle-ultimate.css?v=02423" />
-  <link rel="stylesheet" href="./battle-controls.css?v=02423" />
+  <link rel="manifest" href="./manifest.webmanifest?v=02424" />
+  <link rel="stylesheet" href="./styles.css?v=02424" />
+  <link rel="stylesheet" href="./scenes.css?v=02424" />
+  <link rel="stylesheet" href="./jianghu-nav.css?v=02424" />
+  <link rel="stylesheet" href="./mall-bulk.css?v=02424" />
+  <link rel="stylesheet" href="./power-feedback.css?v=02424" />
+  <link rel="stylesheet" href="./v02413-ui.css?v=02424" />
+  <link rel="stylesheet" href="./battle-visual.css?v=02424" />
+  <link rel="stylesheet" href="./battle-polish.css?v=02424" />
+  <link rel="stylesheet" href="./battle-v240.css?v=02424" />
+  <link rel="stylesheet" href="./battle-figures-v02419.css?v=02424" />
+  <link rel="stylesheet" href="./battle-wuji-v02422.css?v=02424" />
+  <link rel="stylesheet" href="./battle-v02423.css?v=02424" />
+  <link rel="stylesheet" href="./battle-speed.css?v=02424" />
+  <link rel="stylesheet" href="./battle-ultimate.css?v=02424" />
+  <link rel="stylesheet" href="./battle-controls.css?v=02424" />
 </head>
 <body>
   <div id="app" class="app-shell">
     <header class="topbar">
       <div class="brand-wrap">
         <div class="brand">新倚天屠龙记</div>
-        <div class="subtitle">单机精简版 · V0.24.23</div>
+        <div class="subtitle">单机精简版 · V0.24.24</div>
       </div>
       <button id="saveStatus" class="save-status" type="button">已保存</button>
     </header>
@@ -79,7 +79,7 @@
       const guard=new MutationObserver(()=>{
         const el=page.querySelector('.game-info .hero-meta');
         if(el && /V0\.\d+/.test(el.textContent||'')){
-          el.textContent='V0.24.23 · 手机优先 · 本地存档';
+          el.textContent='V0.24.24 · 手机优先 · 本地存档';
           el.classList.remove('hero-meta');
           el.classList.add('game-version-meta');
         }
@@ -113,23 +113,24 @@
 
   <input id="importSaveInput" type="file" accept="application/json,.json" hidden />
 
-  <script src="./battle-dialog-shell.js?v=02423"></script>
-  <script type="module" src="./src/v0245-fragments.js?v=02423"></script>
-  <script type="module" src="./src/v0243-fixes.js?v=02423"></script>
-  <script type="module" src="./src/v02418-wuji-single.js?v=02423"></script>
-  <script type="module" src="./src/app.js?v=02423"></script>
-  <script type="module" src="./src/jianghu-nav.js?v=02423"></script>
-  <script type="module" src="./src/v0249-meridian-shop.js?v=02423"></script>
-  <script type="module" src="./src/v02411-kungfu-power.js?v=02423"></script>
-  <script type="module" src="./src/v02412-kungfu-multi-rare.js?v=02423"></script>
-  <script type="module" src="./src/v02413-weapons-ui.js?v=02423"></script>
-  <script type="module" src="./src/v02414-weapon-acquire.js?v=02423"></script>
-  <script type="module" src="./src/v02415-balance.js?v=02423"></script>
-  <script type="module" src="./src/v02416-scroll-stability.js?v=02423"></script>
-  <script type="module" src="./src/v02421-battle-visual.js?v=02423"></script>
-  <script type="module" src="./src/v02422-wuji-motion.js?v=02423"></script>
-  <script type="module" src="./src/v02423-battle-target-fix.js?v=02423"></script>
-  <script type="module" src="./src/battle-polish.js?v=02423"></script>
-  <script type="module" src="./src/battle-input-fix.js?v=02423"></script>
+  <script src="./battle-dialog-shell.js?v=02424"></script>
+  <script type="module" src="./src/v0245-fragments.js?v=02424"></script>
+  <script type="module" src="./src/v0243-fixes.js?v=02424"></script>
+  <script type="module" src="./src/v02418-wuji-single.js?v=02424"></script>
+  <script type="module" src="./src/app.js?v=02424"></script>
+  <script type="module" src="./src/jianghu-nav.js?v=02424"></script>
+  <script type="module" src="./src/v0249-meridian-shop.js?v=02424"></script>
+  <script type="module" src="./src/v02411-kungfu-power.js?v=02424"></script>
+  <script type="module" src="./src/v02412-kungfu-multi-rare.js?v=02424"></script>
+  <script type="module" src="./src/v02413-weapons-ui.js?v=02424"></script>
+  <script type="module" src="./src/v02414-weapon-acquire.js?v=02424"></script>
+  <script type="module" src="./src/v02415-balance.js?v=02424"></script>
+  <script type="module" src="./src/v02416-scroll-stability.js?v=02424"></script>
+  <script type="module" src="./src/v02421-battle-visual.js?v=02424"></script>
+  <script type="module" src="./src/v02422-wuji-motion.js?v=02424"></script>
+  <script type="module" src="./src/v02423-battle-target-fix.js?v=02424"></script>
+  <script type="module" src="./src/v02424-awakening-recharge.js?v=02424"></script>
+  <script type="module" src="./src/battle-polish.js?v=02424"></script>
+  <script type="module" src="./src/battle-input-fix.js?v=02424"></script>
 </body>
 </html>

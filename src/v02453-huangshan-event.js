@@ -1,4 +1,4 @@
-// V0.24.53: Huangshan Girl 玉女素心剑法, pure event-driven static runtime.
+// V0.24.54: Huangshan Girl 玉女素心剑法 target-locked refinement of the V0.24.53 runtime.
 // No MutationObserver. No fighter class observation. Battle controller remains authoritative.
 const battleBody=document.querySelector('#battleDialogBody');
 const battleDialog=document.querySelector('#battleDialog');
@@ -39,7 +39,7 @@ function setFrame(span,key,index,sx=1,sy=1){const sh=SHEETS[key],f=sh?.frames?.[
 function playSpan(stage,span,key,total,onDone=null,sx=1,sy=1){const sh=SHEETS[key];if(!sh?.frames?.length)return;let i=0;const step=()=>{if(!span.isConnected)return;setFrame(span,key,i++,sx,sy);if(i>=sh.frames.length){onDone?.();return}later(stage,step,total/sh.frames.length)};step()}
 function center(el,root){const r=(el?.querySelector?.('.bv-portrait')||el)?.getBoundingClientRect?.();return r?{x:r.left-root.left+r.width/2,y:r.top-root.top+r.height*.82}:null}
 function spawnFx(stage,key,dur,x,y,sx=1,sy=1,layer='actor'){const w=document.createElement('i'),sp=document.createElement('b');w.className=`huangshan53-fx ${layer}`;sp.className='huangshan53-sprite';w.style.left=`${x}px`;w.style.top=`${y}px`;w.appendChild(sp);stage.appendChild(w);playSpan(stage,sp,key,dur,()=>w.remove(),sx,sy);later(stage,()=>w.remove(),dur+120)}
-function actorPoint(tr,a,t){const x=Number(tr[5]||0),y=Number(tr[6]||0),q=Math.max(-.25,Math.min(1.25,x/300));return{x:a.x+(t.x-a.x)*q,y:a.y+(t.y-a.y)*q+y*.16}}
+function actorPoint(tr,a,t){const key=tr[0],x=Number(tr[5]||0),y=Number(tr[6]||0);const q=key==='m102'?0.08:key==='m103'?0.12:key==='m104'?0.32:key==='m105'?0.62:key==='m106'?0.88:key==='m107'?0.94:key==='m114'?1:0.7;return{x:a.x+(t.x-a.x)*q+x*.035,y:a.y+(t.y-a.y)*q+y*.055}}
 function showName(stage){const el=document.createElement('div');el.className='huangshan53-skillname';const i=document.createElement('i');i.style.backgroundImage=`url("${SKILLNAME}")`;el.appendChild(i);battleDialog.appendChild(el);later(stage,()=>el.classList.add('leaving'),520);later(stage,()=>el.remove(),680)}
 function playSound(){try{const a=new Audio(SOUND);a.volume=.72;audios.add(a);const done=()=>audios.delete(a);a.addEventListener('ended',done,{once:true});a.addEventListener('error',done,{once:true});a.play().catch(done)}catch{}}
 function impact(stage,target,strong=false){target?.animate?.(strong?[{transform:'translate3d(0,0,0)'},{transform:'translate3d(9px,-2px,0)'},{transform:'translate3d(-7px,2px,0)'},{transform:'translate3d(0,0,0)'}]:[{transform:'translate3d(0,0,0)'},{transform:'translate3d(4px,-1px,0)'},{transform:'translate3d(0,0,0)'}],{duration:scaled(stage,strong?230:150),easing:'ease-out'})}
@@ -51,7 +51,7 @@ function cast(stage,targetEls,onImpact){
   actor.classList.add('bv-moving');src.style.visibility='hidden';
   const caster=document.createElement('div'),sp=document.createElement('span');caster.className='huangshan53-caster';sp.className='huangshan53-sprite';caster.style.left=`${a.x}px`;caster.style.top=`${a.y}px`;caster.appendChild(sp);stage.appendChild(caster);playSpan(stage,sp,'att2',ULT_TOTAL);showName(stage);playSound();
   for(const tr of ACTOR_TRACKS)later(stage,()=>{if(!caster.isConnected)return;const p=actorPoint(tr,a,t);spawnFx(stage,tr[0],tr[2],p.x,p.y,tr[3],tr[4],'actor')},tr[1]);
-  const c={x:root.width/2,y:root.height/2};for(const tr of BG_TRACKS)later(stage,()=>{if(caster.isConnected)spawnFx(stage,tr[0],tr[2],c.x+Number(tr[5]||0)*.12,c.y+Number(tr[6]||0)*.12,tr[3],tr[4],'bg')},tr[1]);
+  const c=t;for(const tr of BG_TRACKS)later(stage,()=>{if(caster.isConnected)spawnFx(stage,tr[0],tr[2],c.x+Number(tr[5]||0)*.075,c.y+Number(tr[6]||0)*.075,tr[3],tr[4],'bg')},tr[1]);
   for(const ms of HIT_CUES)later(stage,()=>impact(stage,target,ms===3000),ms);
   for(const ms of SHAKES)later(stage,()=>stage.animate?.([{transform:'translate3d(0,0,0)'},{transform:'translate3d(-6px,1px,0)'},{transform:'translate3d(6px,-1px,0)'},{transform:'translate3d(0,0,0)'}],{duration:scaled(stage,220),easing:'ease-out'}),ms);
   let settled=false;later(stage,()=>{if(!settled){settled=true;onImpact?.()}},SETTLE_AT);later(stage,()=>{if(!settled){settled=true;onImpact?.()}caster.remove();src.style.visibility='';actor.classList.remove('bv-moving')},ULT_TOTAL+120);

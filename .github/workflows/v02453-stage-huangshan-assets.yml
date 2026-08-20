@@ -1,0 +1,67 @@
+name: V02453 Stage Huangshan Assets
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.v02453-build-trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: v02453-huangshan-static-assets
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install deterministic image tooling
+        run: python -m pip install --disable-pip-version-check 'Pillow==12.3.0'
+      - name: Verify staging baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          grep -F 'V0.24.52' index.html
+          ! grep -F 'v02453-huangshan-event.js' index.html
+          node --check src/v02452-tower-actions.js
+          node --check src/v02453-huangshan-event.js
+          ! grep -F 'new MutationObserver' src/v02453-huangshan-event.js
+          ! grep -F '.observe(' src/v02453-huangshan-event.js
+          ! grep -E '^prepare\(\)\.catch' src/v02453-huangshan-event.js
+      - name: Build exact static assets from official source
+        run: python tools/build_huangshan53.py
+      - name: Verify exact outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd assets/original/huangshan-1000018-event
+          echo '0ece61b7dcaeff4ddef8234d914b82b7dba466a823c210ef8b3e700a627d7377  role-ult-q82.webp' | sha256sum -c -
+          echo '70fef4301c082ebd3b2fb5ba19101147a3d6c68fb3f22b989fdea0298d979e53  magic-q82.webp' | sha256sum -c -
+          echo '9bc37e823b37b28e9d134a66d8fc5a1da1ff90f5e99d2c5529d3355b33a1e904  skillname.png' | sha256sum -c -
+          echo 'ae6b9ac636d1d2e5bee6860523b01621e77dc8ad15a99b66586fc7c0641e1c30  4910451.mp3' | sha256sum -c -
+      - name: Publish staging assets only if main did not move
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "$GITHUB_SHA" || { echo 'main moved during build; refusing stale push'; exit 1; }
+          rm -f .v02453-build-trigger .github/workflows/v02453-stage-huangshan-assets.yml tools/build_huangshan53.py
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git diff --cached --check
+          git commit -m 'V0.24.53 stage verified Huangshan static assets'
+          git push origin HEAD:main

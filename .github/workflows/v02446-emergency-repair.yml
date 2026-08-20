@@ -1,0 +1,46 @@
+name: V02446 Emergency Repair
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.event.head_commit.message == 'V0.24.46 emergency repair runner'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Repair exact syntax and clean probes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('src/v02430-battle-visual.js')
+          s=p.read_text(encoding='utf-8')
+          bad="rotate(1deg)'"
+          good="rotate(1deg)`"
+          if bad not in s:
+              raise SystemExit('expected broken token not found; refusing blind edit')
+          s=s.replace(bad,good,1)
+          p.write_text(s,encoding='utf-8')
+          for q in [Path('_tmp_should_not_exist'),Path('src/_probe.txt')]:
+              if q.exists(): q.unlink()
+          PY
+          node --check src/v02430-battle-visual.js
+      - name: Commit repair and remove runner
+        shell: bash
+        run: |
+          rm -f .github/workflows/v02446-emergency-repair.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m 'V0.24.46 repair battle visual syntax and clean probes'
+          git push

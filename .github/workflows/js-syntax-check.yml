@@ -2,8 +2,7 @@ name: V02446 Direct Huangshan Finalizer
 
 on:
   push:
-    paths:
-      - '.github/workflows/js-syntax-check.yml'
+    branches: [main]
   workflow_dispatch:
 
 permissions:

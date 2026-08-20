@@ -1,64 +1,25 @@
-name: V02446 one-shot Huangshan finalizer
+name: JS syntax check
 
 on:
   push:
-    branches: [main]
     paths:
-      - '.v02446-final-build'
+      - 'src/**/*.js'
+      - '.github/workflows/js-syntax-check.yml'
   workflow_dispatch:
 
-permissions:
-  contents: write
-
-concurrency:
-  group: v02446-huangshan-final
-  cancel-in-progress: true
-
 jobs:
-  finalize:
+  syntax:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Build verified compact assets and patch entry
+      - name: Check JavaScript syntax
         shell: bash
         run: |
           set -euo pipefail
-          python -m pip install --disable-pip-version-check pillow
-          python tools/finalize_huangshan_v02446.py
-      - name: Verify before publish
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --check src/v02430-battle-visual.js
-          node --check src/v02441-wuji-original-ultimate.js
-          node --check src/v02446-huangshan-compact.js
-          test -s assets/original/huangshan-1000018/role-q82.webp
-          test -s assets/original/huangshan-1000018/magic-q82.webp
-          test -s assets/original/huangshan-1000018/skillname.png
-          test -s assets/original/huangshan-1000018/4910451.mp3
-          grep -F 'xyt-cache-reset-02446' index.html
-          grep -F 'V0.24.46' index.html
-          grep -F 'battle-huangshan-v02446.css?v=02446' index.html
-          grep -F 'v02446-huangshan-compact.js?v=02446' index.html
-          grep -F "rootObserver.observe(battleBody,{childList:true,subtree:true})" src/v02446-huangshan-compact.js
-          grep -F "if(target?.id==='battleDialogBody'&&next.attributes)" index.html
-          grep -F "if(target?.id==='page')next.subtree=false" index.html
-      - name: Publish verified V0.24.46
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -f .v02446-final-build
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add -A
-          git diff --cached --check
-          git commit -m 'V0.24.46 enable compact official Huangshan ultimate'
-          git push
+          while IFS= read -r -d '' file; do
+            echo "Checking $file"
+            node --check "$file"
+          done < <(find src -type f -name '*.js' -print0)

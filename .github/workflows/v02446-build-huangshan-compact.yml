@@ -1,0 +1,155 @@
+name: V02446 Build Huangshan Compact
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.event.head_commit.message == 'V0.24.46 build Huangshan compact runner'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install image tooling
+        run: python -m pip install --disable-pip-version-check pillow
+      - name: Build compact official Huangshan resources
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+          from PIL import Image
+          from io import BytesIO
+          import struct, shutil
+
+          CDN='https://xyttlj-static.xyimg.net/game/'
+          OUT=Path('assets/original/huangshan-1000018-compact')
+          OUT.mkdir(parents=True,exist_ok=True)
+
+          def get(rel):
+              req=Request(CDN+rel,headers={'User-Agent':'Mozilla/5.0'})
+              with urlopen(req,timeout=30) as r:
+                  data=r.read()
+              if not data:
+                  raise RuntimeError('empty '+rel)
+              return data
+
+          def parse_cfg(data):
+              n=int.from_bytes(data[:2],'big'); rows=[]
+              for i in range(n):
+                  p=2+i*12
+                  rows.append([
+                      int.from_bytes(data[p:p+2],'big',signed=True),
+                      int.from_bytes(data[p+2:p+4],'big',signed=True),
+                      int.from_bytes(data[p+4:p+6],'big'),
+                      int.from_bytes(data[p+6:p+8],'big'),
+                      int.from_bytes(data[p+8:p+10],'big'),
+                      int.from_bytes(data[p+10:p+12],'big'),
+                  ])
+              return rows
+
+          def enc_cfg(rows):
+              b=bytearray(len(rows).to_bytes(2,'big'))
+              for ox,oy,w,h,x,y in rows:
+                  b += int(ox).to_bytes(2,'big',signed=True)
+                  b += int(oy).to_bytes(2,'big',signed=True)
+                  b += int(w).to_bytes(2,'big')
+                  b += int(h).to_bytes(2,'big')
+                  b += int(x).to_bytes(2,'big')
+                  b += int(y).to_bytes(2,'big')
+              return bytes(b)
+
+          decoded=0
+          def compact(stem,scale):
+              global decoded
+              png_rel=stem+'.png'; cfg_rel=stem+'.cfg'
+              png=get(png_rel); cfg=get(cfg_rel)
+              im=Image.open(BytesIO(png)).convert('RGBA')
+              nw=max(1,round(im.width*scale)); nh=max(1,round(im.height*scale))
+              small=im.resize((nw,nh),Image.Resampling.LANCZOS)
+              rows=[]
+              for ox,oy,w,h,x,y in parse_cfg(cfg):
+                  x0=round(x*scale); y0=round(y*scale)
+                  x1=round((x+w)*scale); y1=round((y+h)*scale)
+                  rows.append([round(ox*scale),round(oy*scale),max(1,x1-x0),max(1,y1-y0),x0,y0])
+              out_png=OUT/png_rel; out_cfg=OUT/cfg_rel
+              out_png.parent.mkdir(parents=True,exist_ok=True)
+              small.save(out_png,'PNG',optimize=True,compress_level=9)
+              out_cfg.write_bytes(enc_cfg(rows))
+              decoded += nw*nh*4
+              print(png_rel, im.size, '->', small.size, out_png.stat().st_size)
+
+          for act,ver in [('stand',1),('run',1),('att1',1),('att2',2),('hit1',1)]:
+              compact(f'resself/model/role/{act}/1000018_v{ver}',0.42)
+          for i in range(102,118):
+              compact(f'resself/model/magic/atlas/491045{i}_v2',0.22)
+
+          for rel in ['res/icon/skillname/4010451_v2.png','resself/sound/4910451_v2.mp3']:
+              p=OUT/rel; p.parent.mkdir(parents=True,exist_ok=True); p.write_bytes(get(rel))
+
+          print('decoded RGBA bytes:',decoded)
+          if decoded > 20*1024*1024:
+              raise RuntimeError(f'compact resource memory budget exceeded: {decoded}')
+
+          # Patch the already-reviewed V0.24.43 runtime to consume the compact local mirror.
+          p=Path('src/v02443-huangshan-original.js')
+          s=p.read_text(encoding='utf-8')
+          old="const BASE='https://xyttlj-static.xyimg.net/game/';"
+          new="const BASE='./assets/original/huangshan-1000018-compact/';"
+          if old not in s:
+              raise RuntimeError('Huangshan BASE anchor missing')
+          s=s.replace(old,new,1)
+          s=s.replace(",.42]",",1]",5)
+          s=s.replace(",.22];",",1];",1)
+          hook="if(!roleReady||!stage?.classList?.contains('battle-visual-stage')||!Array.isArray(d.targetEls)||typeof d.onImpact!=='function')return;e.preventDefault();cast(stage,d.targetEls,d.onImpact)"
+          hook2="if(!roleReady||!stage?.classList?.contains('battle-visual-stage')||!Array.isArray(d.targetEls)||typeof d.onImpact!=='function')return;stage.dataset.bvActionDelayMs='3650';e.preventDefault();cast(stage,d.targetEls,d.onImpact)"
+          if hook not in s:
+              raise RuntimeError('Huangshan event hook anchor missing')
+          s=s.replace(hook,hook2,1)
+          p.write_text(s,encoding='utf-8')
+
+          # Re-enable only after compact files exist.
+          idx=Path('index.html')
+          h=idx.read_text(encoding='utf-8')
+          if '02445' not in h:
+              raise RuntimeError('index is not V0.24.45 baseline')
+          h=h.replace('02445','02446')
+          css='  <link rel="stylesheet" href="./battle-huangshan-v02443.css?v=02446" />\n'
+          anchor='  <link rel="stylesheet" href="./battle-wuji-original-v02441.css?v=02446" />\n'
+          if css not in h:
+              h=h.replace(anchor,anchor+css,1)
+          js='  <script type="module" src="./src/v02443-huangshan-original.js?v=02446"></script>\n'
+          anchor2='  <script type="module" src="./src/v02441-wuji-original-ultimate.js?v=02446"></script>\n'
+          if js not in h:
+              h=h.replace(anchor2,anchor2+js,1)
+          idx.write_text(h,encoding='utf-8')
+          PY
+      - name: Verify JavaScript and safety guards
+        shell: bash
+        run: |
+          node --check src/v02430-battle-visual.js
+          node --check src/v02443-huangshan-original.js
+          grep -F "rootObserver.observe(battleBody,{childList:true,subtree:true})" src/v02443-huangshan-original.js
+          grep -F "V0.24.46" index.html
+          grep -F "xyt-cache-reset-02446" index.html
+          test -f assets/original/huangshan-1000018-compact/resself/model/magic/atlas/491045117_v2.png
+      - name: Commit compact build and remove runner
+        shell: bash
+        run: |
+          rm -f .github/workflows/v02446-build-huangshan-compact.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m 'V0.24.46 enable mobile-safe official Huangshan ultimate'
+          git push

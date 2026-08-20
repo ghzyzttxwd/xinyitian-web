@@ -1,0 +1,5 @@
+/* V0.24.52: tower guard authentic attack/hit overlays. */
+.battle-v240 .bv-dash-ghost.tower52-attack>span.tower50-sprite{visibility:hidden!important}
+.battle-v240 .bv-dash-ghost.tower52-attack>span.tower52-action-sprite,.battle-v240 .bv-fighter.enemy[data-fighter-name^="守塔人"].tower52-hit .bv-portrait>span.tower52-hit-sprite{display:block!important;position:absolute!important;margin:0!important;padding:0!important;border:0!important;color:transparent!important;font-size:0!important;pointer-events:none!important;background-repeat:no-repeat!important;image-rendering:auto!important;z-index:3!important}
+.battle-v240 .bv-fighter.enemy[data-fighter-name^="守塔人"].tower52-hit .bv-portrait>span.tower50-sprite{visibility:hidden!important}
+.battle-v240 .bv-fighter.enemy[data-fighter-name^="守塔人"].tower52-hit-hold .bv-portrait>span.tower52-hit-sprite{display:block!important}

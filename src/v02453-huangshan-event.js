@@ -34,7 +34,6 @@ async function prepare(){
   })().catch(e=>{preparePromise=null;console.warn('[XYT] Huangshan event runtime prep failed; generic fallback retained.',e);throw e});
   return preparePromise;
 }
-prepare().catch(()=>{});
 
 function setFrame(span,key,index,sx=1,sy=1){const sh=SHEETS[key],f=sh?.frames?.[index];if(!sh||!f||!span)return;const [ox,oy,w,h,x,y]=f;span.style.left=`${ox}px`;span.style.top=`${oy}px`;span.style.width=`${w}px`;span.style.height=`${h}px`;span.style.backgroundImage=`url("${sh.url}")`;span.style.backgroundSize=`${sh.w}px ${sh.h}px`;span.style.backgroundPosition=`${-x}px ${-y}px`;span.style.backgroundRepeat='no-repeat';span.style.transform=`scale(${sx},${sy})`}
 function playSpan(stage,span,key,total,onDone=null,sx=1,sy=1){const sh=SHEETS[key];if(!sh?.frames?.length)return;let i=0;const step=()=>{if(!span.isConnected)return;setFrame(span,key,i++,sx,sy);if(i>=sh.frames.length){onDone?.();return}later(stage,step,total/sh.frames.length)};step()}

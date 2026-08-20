@@ -1,0 +1,79 @@
+name: V02446 Install Streaming Huangshan
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    if: github.event.head_commit.message == 'V0.24.46 install streaming Huangshan runner'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch Huangshan runtime to sequential compact decode
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('src/v02443-huangshan-original.js')
+          s=p.read_text(encoding='utf-8')
+          old="""async function loadSheet(key){if(SHEETS[key])return SHEETS[key];const [path,scale]=DEF[key],imgUrl=BASE+path+'.png',cfgUrl=BASE+path+'.cfg';const [cfg,img]=await Promise.all([fetch(cfgUrl,{cache:'force-cache'}).then(r=>{if(!r.ok)throw new Error(`${key} cfg ${r.status}`);return r.arrayBuffer()}),new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error(`${key} png load`));i.src=imgUrl})]);return SHEETS[key]={url:imgUrl,w:img.naturalWidth,h:img.naturalHeight,frames:parseCfg(cfg),scale}}
+async function loadKeys(keys){await Promise.all(keys.map(loadSheet))}"""
+          new="""function pngSize(blob){return blob.slice(0,24).arrayBuffer().then(ab=>{const v=new DataView(ab);if(v.byteLength<24||v.getUint32(0,false)!==0x89504e47||v.getUint32(4,false)!==0x0d0a1a0a)throw new Error('not PNG');return [v.getUint32(16,false),v.getUint32(20,false)]})}
+function canvasBlob(canvas){return new Promise((res,rej)=>canvas.toBlob(b=>b?res(b):rej(new Error('canvas encode failed')),'image/webp',.82))}
+async function compactImage(blob,ow,oh,scale){const w=Math.max(1,Math.round(ow*scale)),h=Math.max(1,Math.round(oh*scale)),canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d',{alpha:true});if(!ctx)throw new Error('canvas 2d unavailable');let source=null,tmp='';try{if(typeof createImageBitmap==='function'){try{source=await createImageBitmap(blob,{resizeWidth:w,resizeHeight:h,resizeQuality:'high'})}catch{source=await createImageBitmap(blob)}}else{tmp=URL.createObjectURL(blob);source=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('image decode failed'));i.src=tmp})}ctx.drawImage(source,0,0,w,h);const small=await canvasBlob(canvas);return URL.createObjectURL(small)}finally{try{source?.close?.()}catch{}if(tmp)URL.revokeObjectURL(tmp);canvas.width=1;canvas.height=1}}
+async function loadSheet(key){if(SHEETS[key])return SHEETS[key];const [path,scale]=DEF[key],imgUrl=BASE+path+'.png',cfgUrl=BASE+path+'.cfg';const cfg=await fetch(cfgUrl,{cache:'force-cache'}).then(r=>{if(!r.ok)throw new Error(`${key} cfg ${r.status}`);return r.arrayBuffer()});const response=await fetch(imgUrl,{cache:'force-cache'});if(!response.ok)throw new Error(`${key} png ${response.status}`);const blob=await response.blob(),[ow,oh]=await pngSize(blob),url=await compactImage(blob,ow,oh,scale);return SHEETS[key]={url,w:ow,h:oh,frames:parseCfg(cfg),scale}}
+async function loadKeys(keys){for(const key of keys)await loadSheet(key)}"""
+          if old not in s:
+              raise SystemExit('loadSheet anchor not found; refusing blind patch')
+          s=s.replace(old,new,1)
+          oldhook="battleBody.addEventListener('xyt-huangshan-ultimate',e=>{const stage=e.target?.closest?.('.battle-visual-stage')||e.target,d=e.detail||{};if(!roleReady||!stage?.classList?.contains('battle-visual-stage')||!Array.isArray(d.targetEls)||typeof d.onImpact!=='function')return;e.preventDefault();cast(stage,d.targetEls,d.onImpact)});"
+          newhook="battleBody.addEventListener('xyt-huangshan-ultimate',e=>{const stage=e.target?.closest?.('.battle-visual-stage')||e.target,d=e.detail||{};if(!roleReady||!magicReady||!stage?.classList?.contains('battle-visual-stage')||!Array.isArray(d.targetEls)||typeof d.onImpact!=='function')return;stage.dataset.bvActionDelayMs='3650';e.preventDefault();cast(stage,d.targetEls,d.onImpact)});"
+          if oldhook not in s:
+              raise SystemExit('ultimate hook anchor not found; refusing blind patch')
+          s=s.replace(oldhook,newhook,1)
+          p.write_text(s,encoding='utf-8')
+
+          idx=Path('index.html');h=idx.read_text(encoding='utf-8')
+          if '02445' not in h: raise SystemExit('index baseline not V0.24.45')
+          h=h.replace('02445','02446')
+          css='  <link rel="stylesheet" href="./battle-huangshan-v02443.css?v=02446" />\n'
+          ca='  <link rel="stylesheet" href="./battle-wuji-original-v02441.css?v=02446" />\n'
+          if ca not in h: raise SystemExit('CSS anchor missing')
+          if css not in h:h=h.replace(ca,ca+css,1)
+          js='  <script type="module" src="./src/v02443-huangshan-original.js?v=02446"></script>\n'
+          ja='  <script type="module" src="./src/v02441-wuji-original-ultimate.js?v=02446"></script>\n'
+          if ja not in h: raise SystemExit('JS anchor missing')
+          if js not in h:h=h.replace(ja,ja+js,1)
+          idx.write_text(h,encoding='utf-8')
+          for q in [Path('.v02446-huangshan-file-audit.txt'),Path('.v02446-cdn-diagnostic.txt')]:q.unlink(missing_ok=True)
+          PY
+      - name: Verify syntax and Android safety
+        shell: bash
+        run: |
+          node --check src/v02430-battle-visual.js
+          node --check src/v02443-huangshan-original.js
+          grep -F "async function loadKeys(keys){for(const key of keys)await loadSheet(key)}" src/v02443-huangshan-original.js
+          grep -F "!magicReady" src/v02443-huangshan-original.js
+          grep -F "stage.dataset.bvActionDelayMs='3650'" src/v02443-huangshan-original.js
+          grep -F "rootObserver.observe(battleBody,{childList:true,subtree:true})" src/v02443-huangshan-original.js
+          grep -F "const customDelay=Math.max(0,Number(stage.dataset.bvActionDelayMs||0));" src/v02430-battle-visual.js
+          grep -F 'xyt-cache-reset-02446' index.html
+          grep -F 'V0.24.46' index.html
+      - name: Commit and remove runner
+        shell: bash
+        run: |
+          rm -f .github/workflows/v02446-install-streaming-huangshan.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m 'V0.24.46 enable memory-safe official Huangshan ultimate'
+          git push

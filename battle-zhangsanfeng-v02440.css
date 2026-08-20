@@ -1,0 +1,29 @@
+/* V0.24.40 authentic Zhang Sanfeng (1000012) battle frames. */
+.battle-actors-v02426 .bv-fighter[data-fighter-id="zhangsanfeng"].zsf-frame-ready .bv-portrait{
+  width:70px!important;height:78px!important;border:0!important;border-radius:0!important;
+  overflow:visible!important;background:none!important;box-shadow:none!important;
+  transform-origin:50% 90%!important;filter:drop-shadow(0 7px 6px rgba(0,0,0,.68))!important;
+  animation:none!important;
+}
+.battle-actors-v02426 .bv-fighter[data-fighter-id="zhangsanfeng"].zsf-frame-ready .bv-portrait>span.zsf-frame-sprite,
+.battle-actors-v02426 .bv-dash-ghost.actor-zhangsanfeng.zsf-frame-ghost>span.zsf-frame-sprite{
+  display:block!important;position:absolute!important;margin:0!important;padding:0!important;border:0!important;
+  color:transparent!important;font-size:0!important;pointer-events:none!important;image-rendering:auto!important;transform:none!important;
+}
+.battle-actors-v02426 .bv-dash-ghost.actor-zhangsanfeng.zsf-frame-ghost{
+  border:0!important;border-radius:0!important;overflow:visible!important;box-shadow:none!important;
+  background:none!important;background-color:transparent!important;transform-origin:50% 90%!important;
+}
+.battle-actors-v02426 .bv-fighter[data-fighter-id="zhangsanfeng"].zsf-frame-ready.hit .bv-portrait{
+  animation:bv-actor-hit .36s cubic-bezier(.18,.78,.2,1)!important;
+}
+.battle-actors-v02426 .bv-fighter[data-fighter-id="zhangsanfeng"].zsf-frame-ready.fall .bv-portrait{
+  animation:bv-actor-fall .62s cubic-bezier(.2,.7,.2,1) forwards!important;
+}
+.battle-actors-v02426 .bv-fighter[data-fighter-id="zhangsanfeng"].zsf-frame-ready.dead:not(.fall) .bv-portrait{
+  animation:none!important;transform:translate3d(7px,12px,0) rotate(13deg) scale(.93)!important;
+  filter:grayscale(.92) brightness(.56) drop-shadow(0 4px 4px rgba(0,0,0,.65))!important;opacity:.58!important;
+}
+@media(max-width:430px){
+  .battle-actors-v02426 .bv-fighter[data-fighter-id="zhangsanfeng"].zsf-frame-ready .bv-portrait{width:64px!important;height:72px!important}
+}

@@ -272,6 +272,8 @@ function buildController(stage,events,players,enemies,finalBox,outcome){
     const crit=event.structured?Number(event.crits||0)>0:event.tail?.includes('暴击'),dodged=!event.structured&&event.tail?.includes('闪避'),guarded=!event.structured&&event.tail?.includes('护盾挡下');
     const settle=()=>event.structured?applyStructured(event):applyApprox(targets,event,crit,dodged,guarded);
     const isWuji=actor.id==='wuji'||actor.name==='张无忌';
+    const isHuangshan=actor.id==='huangshan'||actor.name==='黄衫女';
+    const isXiaozhao=actor.id==='xiaozhao'||actor.name==='小昭';
     if(event.normal){
       const targetEl=card(targets[0].name);
       if(isWuji)wujiPunchAttack(actorEl,targetEl,'normal',()=>{addImpact(targetEl,'slash',crit);stageShake(crit);settle();});
@@ -281,6 +283,14 @@ function buildController(stage,events,players,enemies,finalBox,outcome){
       const targetEls=targets.map(t=>card(t.name)).filter(Boolean);
       const handled=!stage.dispatchEvent(new CustomEvent('xyt-wuji-ultimate',{bubbles:true,cancelable:true,detail:{skill:event.skill||'',targetEls,onImpact:settle}}));
       if(!handled)fallbackWujiSkill(actorEl,targets,crit,settle,event);
+    }else if(isHuangshan||isXiaozhao){
+      const targetEls=targets.map(t=>card(t.name)).filter(Boolean);
+      const eventName=isHuangshan?'xyt-huangshan-ultimate':'xyt-xiaozhao-ultimate';
+      const handled=!stage.dispatchEvent(new CustomEvent(eventName,{bubbles:true,cancelable:true,detail:{skill:event.skill||'',targetEls,onImpact:settle}}));
+      if(!handled){
+        if(targets.length===1){const targetEl=card(targets[0].name);singleSkillCast(actorEl,targetEl,crit);setTimeout(settle,scaled(350));}
+        else{skillCast(actorEl,targets,crit);setTimeout(settle,scaled(180));}
+      }
     }else if(targets.length===1){
       const targetEl=card(targets[0].name);singleSkillCast(actorEl,targetEl,crit);setTimeout(settle,scaled(350));
     }else{skillCast(actorEl,targets,crit);setTimeout(settle,scaled(180));}
@@ -295,6 +305,8 @@ function buildController(stage,events,players,enemies,finalBox,outcome){
     if(event.type==='round')return scaled(330);
     if(event.type==='action'){
       if(!event.normal&&event.actor==='张无忌')return scaled(2150);
+      if(!event.normal&&event.actor==='黄衫女')return scaled(3650);
+      if(!event.normal&&event.actor==='小昭')return scaled(4050);
       return scaled(event.normal?680:900);
     }
     return scaled(420);

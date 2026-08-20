@@ -1,0 +1,10 @@
+/* V0.24.41 official Zhang Wuji 4910102 ultimate. */
+.wuji41-caster,.wuji41-fx{position:absolute;z-index:18;width:0;height:0;overflow:visible;pointer-events:none}
+.wuji41-caster{z-index:19;filter:drop-shadow(0 7px 6px rgba(0,0,0,.65))}
+.wuji41-sprite{position:absolute;display:block;background-repeat:no-repeat;transform-origin:0 0;pointer-events:none}
+.wuji41-fx{mix-blend-mode:screen;filter:drop-shadow(0 0 5px rgba(115,190,255,.38))}
+.wuji41-skillname{position:absolute;inset:0;z-index:80;pointer-events:none;display:flex;align-items:center;justify-content:center;background:linear-gradient(90deg,rgba(4,10,20,.03),rgba(4,10,20,.48),rgba(4,10,20,.03));animation:wuji41-name-in .42s ease-out both}
+.wuji41-skillname i{display:block;width:min(58vw,250px);aspect-ratio:460/364;background-position:center;background-size:contain;background-repeat:no-repeat;filter:drop-shadow(0 0 12px rgba(143,208,255,.62))}
+.wuji41-skillname.leaving{animation:wuji41-name-out .14s ease-in forwards}
+@keyframes wuji41-name-in{0%{opacity:0;transform:scale(.84)}35%{opacity:1;transform:scale(1.04)}100%{opacity:1;transform:scale(1)}}
+@keyframes wuji41-name-out{to{opacity:0;transform:scale(1.06)}}

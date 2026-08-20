@@ -1,4 +1,4 @@
-// V0.24.53 staging: Huangshan Girl 玉女素心剑法, pure event-driven static runtime.
+// V0.24.53: Huangshan Girl 玉女素心剑法, pure event-driven static runtime.
 // No MutationObserver. No fighter class observation. Battle controller remains authoritative.
 const battleBody=document.querySelector('#battleDialogBody');
 const battleDialog=document.querySelector('#battleDialog');
@@ -59,9 +59,12 @@ function cast(stage,targetEls,onImpact){
 
 battleBody.addEventListener('xyt-huangshan-ultimate',e=>{
   const stage=e.target?.closest?.('.battle-visual-stage')||e.target,d=e.detail||{};
-  if(!ready){prepare().catch(()=>{});return}
   if(!stage?.classList?.contains('battle-visual-stage')||!Array.isArray(d.targetEls)||typeof d.onImpact!=='function')return;
-  stage.dataset.bvActionDelayMs='3650';e.preventDefault();cast(stage,d.targetEls,d.onImpact);
+  if(ready){stage.dataset.bvActionDelayMs='3650';e.preventDefault();cast(stage,d.targetEls,d.onImpact);return}
+  // First cast owns the event while the verified local atlases decode. This prevents
+  // the first ultimate from silently falling back to the generic animation.
+  stage.dataset.bvActionDelayMs='5200';e.preventDefault();
+  prepare().then(()=>{if(stage.isConnected)cast(stage,d.targetEls,d.onImpact);else d.onImpact()}).catch(()=>d.onImpact());
 });
 
 battleBody.addEventListener('xyt-battle-stop',()=>{for(const id of timers)clearTimeout(id);timers.clear();for(const a of audios){try{a.pause();a.currentTime=0}catch{}}audios.clear();battleBody.querySelectorAll('.battle-visual-stage').forEach(clear)});

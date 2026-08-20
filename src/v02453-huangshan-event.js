@@ -16,7 +16,7 @@ const BG_TRACKS=[['m108',0,2800,1,1,241,-601],['m109',0,2800,1.05,1.05,210,650],
 const HIT_CUES=[1200,1700,3000],SHAKES=[1300,1800,3000];
 const ULT_TOTAL=3300,SETTLE_AT=3000;
 const SHEETS={},timers=new Set(),audios=new Set();
-let ready=false,preparePromise=null;
+let ready=false,preparePromise=null,battleToken=0;
 
 function speedRate(stage){const s=Math.max(1,Math.min(5,Number(stage?.dataset?.bvSpeedLevel||1)));return Math.max(.5,s/2)}
 function scaled(stage,ms){return Math.max(12,ms/speedRate(stage))}
@@ -63,8 +63,9 @@ battleBody.addEventListener('xyt-huangshan-ultimate',e=>{
   if(ready){stage.dataset.bvActionDelayMs='3650';e.preventDefault();cast(stage,d.targetEls,d.onImpact);return}
   // First cast owns the event while the verified local atlases decode. This prevents
   // the first ultimate from silently falling back to the generic animation.
-  stage.dataset.bvActionDelayMs='5200';e.preventDefault();
-  prepare().then(()=>{if(stage.isConnected)cast(stage,d.targetEls,d.onImpact);else d.onImpact()}).catch(()=>d.onImpact());
+  const token=battleToken;
+  stage.dataset.bvActionDelayMs=String(3650+3000*speedRate(stage));e.preventDefault();
+  prepare().then(()=>{if(token!==battleToken||!stage.isConnected)return;cast(stage,d.targetEls,d.onImpact)}).catch(()=>{if(token===battleToken&&stage.isConnected)d.onImpact()});
 });
 
-battleBody.addEventListener('xyt-battle-stop',()=>{for(const id of timers)clearTimeout(id);timers.clear();for(const a of audios){try{a.pause();a.currentTime=0}catch{}}audios.clear();battleBody.querySelectorAll('.battle-visual-stage').forEach(clear)});
+battleBody.addEventListener('xyt-battle-stop',()=>{battleToken++;for(const id of timers)clearTimeout(id);timers.clear();for(const a of audios){try{a.pause();a.currentTime=0}catch{}}audios.clear();battleBody.querySelectorAll('.battle-visual-stage').forEach(clear)});

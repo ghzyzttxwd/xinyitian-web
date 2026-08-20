@@ -1,4 +1,4 @@
-name: V02446 Build Huangshan Compact V2
+name: V02446 Huangshan File Audit
 
 on:
   push:
@@ -8,172 +8,48 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    if: github.event.head_commit.message == 'V0.24.46 build Huangshan compact v2 runner'
+  audit:
+    if: github.event.head_commit.message == 'V0.24.46 audit Huangshan source files runner'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Install Pillow
-        run: python -m pip install --disable-pip-version-check pillow
-      - name: Download and compact official Huangshan resources
+      - name: Audit every required official file
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-          from PIL import Image
-          from io import BytesIO
-          import subprocess, shutil
-
-          CDN='https://xyttlj-static.xyimg.net/game/'
-          OUT=Path('assets/original/huangshan-1000018-compact')
-          TMP=Path('/tmp/xyt-huangshan')
-          shutil.rmtree(OUT,ignore_errors=True)
-          shutil.rmtree(TMP,ignore_errors=True)
-          OUT.mkdir(parents=True,exist_ok=True)
-          TMP.mkdir(parents=True,exist_ok=True)
-
-          stems=[]
+          import subprocess
+          base='https://xyttlj-static.xyimg.net/game/'
+          files=[]
           for act,ver in [('stand',1),('run',1),('att1',1),('att2',2),('hit1',1)]:
-              stems.append((f'resself/model/role/{act}/1000018_v{ver}',0.42))
+              stem=f'resself/model/role/{act}/1000018_v{ver}'
+              files += [stem+'.png',stem+'.cfg']
           for i in range(102,118):
-              stems.append((f'resself/model/magic/atlas/491045{i}_v2',0.22))
-
-          def dl(rel):
-              dst=TMP/rel
-              dst.parent.mkdir(parents=True,exist_ok=True)
-              cmd=['curl','-fL','--retry','3','--retry-delay','1','--connect-timeout','10','--max-time','45','-A','Mozilla/5.0',CDN+rel,'-o',str(dst)]
-              r=subprocess.run(cmd)
-              if r.returncode:
-                  raise RuntimeError(f'curl failed {r.returncode}: {rel}')
-              if not dst.exists() or dst.stat().st_size==0:
-                  raise RuntimeError(f'empty download: {rel}')
-              return dst
-
-          # Phase 1: fetch every required file before changing the repository tree.
-          for stem,_ in stems:
-              dl(stem+'.png'); dl(stem+'.cfg')
-          for rel in ['res/icon/skillname/4010451_v2.png','resself/sound/4910451_v2.mp3']:
-              dl(rel)
-
-          def parse_cfg(data):
-              if len(data)<2: raise RuntimeError('short cfg')
-              n=int.from_bytes(data[:2],'big')
-              if len(data)<2+n*12: raise RuntimeError(f'truncated cfg: frames={n} bytes={len(data)}')
-              rows=[]
-              for i in range(n):
-                  p=2+i*12
-                  rows.append([
-                      int.from_bytes(data[p:p+2],'big',signed=True),
-                      int.from_bytes(data[p+2:p+4],'big',signed=True),
-                      int.from_bytes(data[p+4:p+6],'big'),
-                      int.from_bytes(data[p+6:p+8],'big'),
-                      int.from_bytes(data[p+8:p+10],'big'),
-                      int.from_bytes(data[p+10:p+12],'big'),
-                  ])
-              return rows
-
-          def enc_cfg(rows):
-              b=bytearray(len(rows).to_bytes(2,'big'))
-              for ox,oy,w,h,x,y in rows:
-                  b += int(ox).to_bytes(2,'big',signed=True)
-                  b += int(oy).to_bytes(2,'big',signed=True)
-                  b += int(w).to_bytes(2,'big')
-                  b += int(h).to_bytes(2,'big')
-                  b += int(x).to_bytes(2,'big')
-                  b += int(y).to_bytes(2,'big')
-              return bytes(b)
-
-          decoded=0; png_bytes=0; cfg_bytes=0
-          for stem,scale in stems:
-              src_png=TMP/(stem+'.png'); src_cfg=TMP/(stem+'.cfg')
-              im=Image.open(src_png).convert('RGBA')
-              nw=max(1,round(im.width*scale)); nh=max(1,round(im.height*scale))
-              small=im.resize((nw,nh),Image.Resampling.LANCZOS)
-              rows=[]
-              for ox,oy,w,h,x,y in parse_cfg(src_cfg.read_bytes()):
-                  x0=round(x*scale); y0=round(y*scale)
-                  x1=round((x+w)*scale); y1=round((y+h)*scale)
-                  rows.append([round(ox*scale),round(oy*scale),max(1,x1-x0),max(1,y1-y0),x0,y0])
-              op=OUT/(stem+'.png'); oc=OUT/(stem+'.cfg')
-              op.parent.mkdir(parents=True,exist_ok=True)
-              small.save(op,'PNG',optimize=True,compress_level=9)
-              oc.write_bytes(enc_cfg(rows))
-              # Re-open output: machine-check written PNG, dimensions and CFG frame count.
-              chk=Image.open(op); chk.load()
-              if chk.size!=(nw,nh): raise RuntimeError(f'dimension mismatch {stem}: {chk.size} != {(nw,nh)}')
-              if len(parse_cfg(oc.read_bytes()))!=len(rows): raise RuntimeError(f'cfg count mismatch {stem}')
-              decoded += nw*nh*4; png_bytes += op.stat().st_size; cfg_bytes += oc.stat().st_size
-              print(f'{stem}: {im.width}x{im.height} -> {nw}x{nh}; frames={len(rows)}; png={op.stat().st_size}')
-
-          for rel in ['res/icon/skillname/4010451_v2.png','resself/sound/4910451_v2.mp3']:
-              dst=OUT/rel; dst.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(TMP/rel,dst)
-
-          print(f'compact decoded RGBA={decoded} bytes, PNG={png_bytes}, CFG={cfg_bytes}')
-          if decoded>16*1024*1024:
-              raise RuntimeError(f'memory budget exceeded: {decoded}')
-
-          # Make the existing reviewed official runtime use the compact local mirror.
-          p=Path('src/v02443-huangshan-original.js')
-          s=p.read_text(encoding='utf-8')
-          old="const BASE='https://xyttlj-static.xyimg.net/game/';"
-          if old not in s: raise RuntimeError('Huangshan BASE anchor missing')
-          s=s.replace(old,"const BASE='./assets/original/huangshan-1000018-compact/';",1)
-          for old_scale in ["stand:['resself/model/role/stand/1000018_v1',.42]","run:['resself/model/role/run/1000018_v1',.42]","att1:['resself/model/role/att1/1000018_v1',.42]","att2:['resself/model/role/att2/1000018_v2',.42]","hit1:['resself/model/role/hit1/1000018_v1',.42]"]:
-              if old_scale not in s: raise RuntimeError('role scale anchor missing: '+old_scale)
-              s=s.replace(old_scale,old_scale.replace(',.42]',',1]'),1)
-          magic="for(let i=102;i<=117;i++)DEF[`m${i}`]=[`resself/model/magic/atlas/491045${i}_v2`,.22];"
-          if magic not in s: raise RuntimeError('magic scale anchor missing')
-          s=s.replace(magic,magic.replace(',.22]',',1]'),1)
-          hook="if(!roleReady||!stage?.classList?.contains('battle-visual-stage')||!Array.isArray(d.targetEls)||typeof d.onImpact!=='function')return;e.preventDefault();cast(stage,d.targetEls,d.onImpact)"
-          hook2="if(!roleReady||!stage?.classList?.contains('battle-visual-stage')||!Array.isArray(d.targetEls)||typeof d.onImpact!=='function')return;stage.dataset.bvActionDelayMs='3650';e.preventDefault();cast(stage,d.targetEls,d.onImpact)"
-          if hook not in s: raise RuntimeError('ultimate hook anchor missing')
-          s=s.replace(hook,hook2,1)
-          p.write_text(s,encoding='utf-8')
-
-          idx=Path('index.html'); h=idx.read_text(encoding='utf-8')
-          if '02445' not in h: raise RuntimeError('index is not V0.24.45 baseline')
-          h=h.replace('02445','02446')
-          ca='  <link rel="stylesheet" href="./battle-wuji-original-v02441.css?v=02446" />\n'
-          add='  <link rel="stylesheet" href="./battle-huangshan-v02443.css?v=02446" />\n'
-          if ca not in h: raise RuntimeError('CSS insertion anchor missing')
-          if add not in h: h=h.replace(ca,ca+add,1)
-          ja='  <script type="module" src="./src/v02441-wuji-original-ultimate.js?v=02446"></script>\n'
-          js='  <script type="module" src="./src/v02443-huangshan-original.js?v=02446"></script>\n'
-          if ja not in h: raise RuntimeError('JS insertion anchor missing')
-          if js not in h: h=h.replace(ja,ja+js,1)
-          idx.write_text(h,encoding='utf-8')
-
-          Path('.v02446-build-report.txt').write_text(
-              f'decoded_rgba={decoded}\npng_bytes={png_bytes}\ncfg_bytes={cfg_bytes}\nfiles={len(stems)*2+2}\n',encoding='utf-8')
-          Path('.v02446-cdn-diagnostic.txt').unlink(missing_ok=True)
+              stem=f'resself/model/magic/atlas/491045{i}_v2'
+              files += [stem+'.png',stem+'.cfg']
+          files += ['res/icon/skillname/4010451_v2.png','resself/sound/4910451_v2.mp3']
+          out=[]; bad=[]
+          for rel in files:
+              r=subprocess.run(['curl','-L','--max-time','20','-A','Mozilla/5.0','-sS','-o','/tmp/xytprobe','-w','%{http_code}\t%{size_download}\t%{content_type}',base+rel],capture_output=True,text=True)
+              line=f'{r.stdout.strip()}\t{rel}\texit={r.returncode}'
+              out.append(line)
+              parts=r.stdout.strip().split('\t')
+              if r.returncode or not parts or parts[0]!='200' or len(parts)<2 or int(float(parts[1] or 0))<=0: bad.append(rel)
+          out.append(f'TOTAL={len(files)} BAD={len(bad)}')
+          if bad:
+              out.append('BAD_FILES:')
+              out.extend(bad)
+          Path('.v02446-huangshan-file-audit.txt').write_text('\n'.join(out)+'\n',encoding='utf-8')
+          print('\n'.join(out))
           PY
-      - name: Verify exact runtime and safety invariants
-        shell: bash
-        run: |
-          node --check src/v02430-battle-visual.js
-          node --check src/v02443-huangshan-original.js
-          grep -F "const customDelay=Math.max(0,Number(stage.dataset.bvActionDelayMs||0));" src/v02430-battle-visual.js
-          grep -F "stage.dataset.bvActionDelayMs='3650';e.preventDefault();" src/v02443-huangshan-original.js
-          grep -F "rootObserver.observe(battleBody,{childList:true,subtree:true})" src/v02443-huangshan-original.js
-          ! grep -F "preloadMagic();const o=" src/v02443-huangshan-original.js || true
-          grep -F 'xyt-cache-reset-02446' index.html
-          grep -F 'V0.24.46' index.html
-          test -s assets/original/huangshan-1000018-compact/resself/model/role/stand/1000018_v1.png
-          test -s assets/original/huangshan-1000018-compact/resself/model/magic/atlas/491045117_v2.png
-      - name: Commit compact build and remove runner
+      - name: Commit audit and remove runner
         shell: bash
         run: |
           rm -f .github/workflows/v02446-build-huangshan-compact-v2.yml
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A
-          git commit -m 'V0.24.46 enable mobile-safe official Huangshan ultimate'
+          git commit -m 'V0.24.46 record Huangshan source file audit'
           git push

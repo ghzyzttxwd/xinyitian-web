@@ -1,0 +1,17 @@
+date=2026-08-20T04:52:07Z
+dns:
+138.113.24.59   xyttlj-static.xyimg.net.wswebpic.com xyttlj-static.xyimg.net
+140.150.36.50   xyttlj-static.xyimg.net.wswebpic.com xyttlj-static.xyimg.net
+dns_exit=0
+--- https://xyttlj-static.xyimg.net/game/resself/model/role/stand/1000018_v1.png
+http=200 size=150595 remote=138.113.24.59 error=
+curl_exit=0
+/tmp/probe.bin: PNG image data, 842 x 629, 8-bit colormap, non-interlaced
+--- https://xyttlj-static.xyimg.net/game/resself/model/role/stand/1000012_v1.png
+http=200 size=220886 remote=140.150.36.50 error=
+curl_exit=0
+/tmp/probe.bin: PNG image data, 961 x 663, 8-bit colormap, non-interlaced
+--- http://xyttlj-static.xyimg.net/game/resself/model/role/stand/1000018_v1.png
+http=200 size=150595 remote=140.150.36.50 error=
+curl_exit=0
+/tmp/probe.bin: PNG image data, 842 x 629, 8-bit colormap, non-interlaced
